@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from copy import deepcopy
-import tileClass
+from tileClass import TileClass
 
 """
 Represents any one state of the 2048 game. 
@@ -15,17 +17,13 @@ class gameState:
     """
     def __init__(self):
         #Create original list
-        self.board: list[
-                        list: tileClass, 
-                        list: tileClass, 
-                        list: tileClass,
-                        list: tileClass] = list()
+        self.board: list[list[TileClass | None]] = list()
         
         #Add 4 empty lists to our board
         for i in range(len(self.board)):
             #Add 4 empty lists to each list in list
             self.board.append(list())
-            for n in range(4):
+            for _ in range(4):
                 self.board[i].append(None)
         
         self.score = 0
@@ -36,7 +34,7 @@ class gameState:
     Create a gameState from another gameState. 
     Might not be necessary or should be copy function
     """
-    def __init__(self, gameState):
+    def copy(self, state: gameState):
         self.board = deepcopy(gameState.board)
         self.score = gameState.score
         self.freeSpaces = gameState.freeSpaces
@@ -56,7 +54,7 @@ class gameState:
         
         
         
-    def checkLegal(self, direction):
+    def checkLegal(self, direction: str):
         if direction not in ["up", "down", "left", "right"]:
             return
         

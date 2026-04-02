@@ -6,7 +6,7 @@ Fields:
     value: Represents the value of a tile
 """
 @type
-class tileClass:
+class TileClass:
     """
     Creates a new tile with default value of 2
     """    
