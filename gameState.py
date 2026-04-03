@@ -92,7 +92,16 @@ class gameState:
         
     
     def isLoss():
-        pass
+        #if no more possible moves?
+        #need to show that the entire gamestate board is filled, with no possible moves
+        for direction in ["up", "down", "left", "right"]:
+            #iterate through each direction. if there is NOT a conflict with any direction, then there is a legal move
+            if checkConflict(self, tile, direction) == True:
+                return False
+        #otherwise, if there is a conflict with each direction, then there is not a legal move
+        #then, you return loss = true
+        return True
+        #pass
         
     def isWin():
         pass
