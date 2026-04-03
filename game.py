@@ -4,14 +4,19 @@ DIRECTIONS = ["left, right, up, down"]
 
 def main():
     pygame.init()
-
+    
+    # Screen size in pixels
     size: tuple[int, int] = (1000, 1000)
+    
+    # RGB color values
     black: tuple[int, int, int] = (0, 0, 0)
     white: tuple[int, int, int] = (255, 255, 255)
     
+    # Create the game window
     screen = pygame.display.set_mode(size)
     
-    screen.fill(color=white)
+    #Fill the screen with a white background initially
+    screen.fill(color=white)        
     
     screenCenter: tuple[float, float] = (500, 500)
     running: bool = True
@@ -23,6 +28,7 @@ def main():
     
     clock = pygame.time.Clock()
     
+    # Right now it seems to run a program that has a ball in the center of the screen. Moves upon input WASD (Up, Left, Down, Right)
     while running:
         dt = clock.tick(60) / 1000
         
@@ -36,13 +42,14 @@ def main():
         x: float = ballLocation[0]
         y: float = ballLocation[1]
         
-        if keyAction[pygame.K_d] == True:
+        #added arrow key input functionality (it also allows movement diagonally if two keys held simulatenously, might be buggy for 2048?)
+        if keyAction[pygame.K_d] or keyAction[pygame.K_RIGHT] == True:
             x += 300 * dt
-        if keyAction[pygame.K_a] == True:
+        if keyAction[pygame.K_a] or keyAction[pygame.K_LEFT] == True:
             x -= 300 * dt
-        if keyAction[pygame.K_s] == True:
+        if keyAction[pygame.K_s] or keyAction[pygame.K_DOWN] == True:
             y += 300 * dt
-        if keyAction[pygame.K_w] == True:
+        if keyAction[pygame.K_w] or keyAction[pygame.K_UP] == True:
             y -= 300 * dt
             
         ballLocation =(x, y)
