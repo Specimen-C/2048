@@ -25,6 +25,14 @@ COLOR_FG_DARK: ColorTuple = (120, 111, 101)
 COLOR_FG_LIGHT: ColorTuple = (250, 246, 243)
 COLOR_BG: ColorTuple = (187, 174, 161)
 
+# key mappings
+MOVE_KEYS: dict[str, list[int]] = {
+    "up": [pygame.K_w, pygame.K_UP],
+    "down": [pygame.K_s, pygame.K_DOWN],
+    "left": [pygame.K_a, pygame.K_LEFT],
+    "right": [pygame.K_d, pygame.K_RIGHT],
+}
+
 # color mappings
 BLOCK_COLORS: dict[BlockValue | None, tuple[ColorTuple, ColorTuple]] = {
     0: ((204, 193, 180), (204, 193, 180)),
@@ -86,16 +94,145 @@ class AppState:
     The amount of time in seconds since the last frame was rendered.
     """
 
-    board: list[list[BlockValue]]
+    board: BoardState
     """
-    A 2D array representing the values on the board. Indexed with
-    `board[row][col]`.
+    The 2048 game's board state.
     """
 
     clock: Clock
     """
     The game clock.
     """
+
+
+@dataclass(kw_only=True)
+class BoardState:
+    """
+    State of the 2048 board.
+    """
+
+    n: int
+    """
+    The width of the square board.
+    """
+
+    board: list[list[BlockValue]]
+    """
+    A 2D array representing the values on the board. Indexed with
+    `board[row][col]`.
+    """
+
+    def move_up(self) -> None:
+        for col_i in range(self.n):
+            # generate column without empty blocks
+            col = [
+                self.board[row_i][col_i]
+                for row_i in range(self.n)
+                if self.board[row_i][col_i] != 0
+            ]
+
+            # merge adjacents
+            for i in range(1, len(col)):
+                if col[i - 1] == col[i]:
+                    col[i - 1] *= 2
+                    col[i] = 0
+
+            # remove empty blocks from merge
+            col = [val for val in col if val != 0]
+
+            # pad with 0s
+            for _ in range(self.n - len(col)):
+                col.append(0)
+
+            # write back to grid
+            for row_i in range(self.n):
+                self.board[row_i][col_i] = col[row_i]
+
+    def move_down(self) -> None:
+        for col_i in range(self.n):
+            # generate reverse column without empty blocks
+            col = [
+                self.board[row_i][col_i]
+                for row_i in range(self.n)
+                if self.board[row_i][col_i] != 0
+            ]
+            col = list(reversed(col))
+
+            # merge adjacents
+            for i in range(1, len(col)):
+                if col[i - 1] == col[i]:
+                    col[i - 1] *= 2
+                    col[i] = 0
+
+            # remove empty blocks from merge
+            col = [val for val in col if val != 0]
+
+            # pad with 0s
+            for _ in range(self.n - len(col)):
+                col.append(0)
+
+            # re-reverse col
+            col = list(reversed(col))
+
+            # write back to grid
+            for row_i in range(self.n):
+                self.board[row_i][col_i] = col[row_i]
+
+    def move_left(self) -> None:
+        for row_i in range(self.n):
+            # generate row without empty blocks
+            row = [
+                self.board[row_i][col_i]
+                for col_i in range(self.n)
+                if self.board[row_i][col_i] != 0
+            ]
+
+            # merge adjacents
+            for i in range(1, len(row)):
+                if row[i - 1] == row[i]:
+                    row[i - 1] *= 2
+                    row[i] = 0
+
+            # remove empty blocks from merge
+            row = [val for val in row if val != 0]
+
+            # pad with 0s
+            for _ in range(self.n - len(row)):
+                row.append(0)
+
+            # write back to grid
+            for col_i in range(self.n):
+                self.board[row_i][col_i] = row[col_i]
+
+    def move_right(self) -> None:
+        for row_i in range(self.n):
+            # generate row without empty blocks
+            row = [
+                self.board[row_i][col_i]
+                for col_i in range(self.n)
+                if self.board[row_i][col_i] != 0
+            ]
+            row = list(reversed(row))
+
+            # merge adjacents
+            for i in range(1, len(row)):
+                if row[i - 1] == row[i]:
+                    row[i - 1] *= 2
+                    row[i] = 0
+
+            # remove empty blocks from merge
+            row = [val for val in row if val != 0]
+
+            # pad with 0s
+            for _ in range(self.n - len(row)):
+                row.append(0)
+
+            # re-reverse rol
+            row = list(reversed(row))
+
+            # write back to grid
+            for col_i in range(self.n):
+                self.board[row_i][col_i] = row[col_i]
 
 
 def draw_block(
@@ -120,7 +257,7 @@ def draw_block(
     cell.blit(block, (CELL_PADDING, CELL_PADDING))
 
     # draw text onto cell
-    text = ctx.block_text[value]
+    text = ctx.block_text.get(value, ctx.block_text[None])
     text_rect = text.get_rect(center=(CELL_L / 2, CELL_L / 2))
     cell.blit(text, text_rect)
 
@@ -128,7 +265,7 @@ def draw_block(
     board.blit(cell, (cell_x, cell_y))
 
 
-def main():
+def main() -> None:
     # init pygame
     pygame.init()
 
@@ -145,12 +282,15 @@ def main():
         running=True,
         clock=pygame.time.Clock(),
         dt=0.0,
-        board=[
-            [2, 0, 0, 0],
-            [0, 0, 2, 0],
-            [0, 4, 8, 8],
-            [256, 64, 32, 16],
-        ],
+        board=BoardState(
+            n=4,
+            board=[
+                [2, 0, 0, 2],
+                [0, 4, 32, 0],
+                [0, 0, 8, 16],
+                [2, 0, 8, 0],
+            ],
+        ),
     )
 
     # game loop
@@ -163,14 +303,14 @@ def main():
             if event.type == pygame.QUIT:
                 state.running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_w:
-                    print("Move Up")
-                elif event.key == pygame.K_s:
-                    print("Move Down")
-                elif event.key == pygame.K_a:
-                    print("Move Left")
-                elif event.key == pygame.K_d:
-                    print("Move Right")
+                if event.key in MOVE_KEYS["up"]:
+                    state.board.move_up()
+                elif event.key in MOVE_KEYS["down"]:
+                    state.board.move_down()
+                elif event.key in MOVE_KEYS["left"]:
+                    state.board.move_left()
+                elif event.key in MOVE_KEYS["right"]:
+                    state.board.move_right()
 
         # fill screen with background
         screen.fill(COLOR_BG)
@@ -180,11 +320,15 @@ def main():
         board.fill(COLOR_BG)
 
         # draw blocks onto board
-        for row_i in range(len(state.board)):
-            for col_i in range(len(state.board[0])):
-                value = state.board[row_i][col_i]
-                if value is not None:
-                    draw_block(context, board, value, row_i, col_i)
+        for row_i in range(state.board.n):
+            for col_i in range(state.board.n):
+                draw_block(
+                    context,
+                    board,
+                    state.board.board[row_i][col_i],
+                    row_i,
+                    col_i,
+                )
 
         # draw board onto screen
         screen.blit(board, (WINDOW_PADDING, WINDOW_PADDING))
