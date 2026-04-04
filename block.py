@@ -14,7 +14,8 @@ type ColorTuple = tuple[int, int, int]
 # color constants
 COLOR_FG_DARK: ColorTuple = (120, 111, 101)
 COLOR_FG_LIGHT: ColorTuple = (250, 246, 243)
-COLOR_BG: ColorTuple = (187, 174, 161)
+COLOR_BOARD_BG: ColorTuple = (187, 174, 161)
+COLOR_BG: ColorTuple = (250, 248, 239)
 
 # key mappings
 MOVE_KEYS: dict[str, list[int]] = {
@@ -69,9 +70,19 @@ class AppConfig:
     Length (width and height) of a block.
     """
 
+    BOARD_PADDING: int
+    """
+    Padding on each side of the board.
+    """
+
     BOARD_L: int
     """
     Length (width and height) of the board.
+    """
+
+    STATUS_H: int
+    """
+    Height of the status area where the score is displayed
     """
 
     WINDOW_PADDING: int
@@ -79,9 +90,14 @@ class AppConfig:
     Padding around each side of the display.
     """
 
-    WINDOW_L: int
+    WINDOW_W: int
     """
-    Length (width and height) of the display.
+    Width of the display.
+    """
+
+    WINDOW_H: int
+    """
+    Height of the display.
     """
 
     @staticmethod
@@ -91,9 +107,12 @@ class AppConfig:
         CELL_L: int = 100
         CELL_PADDING: int = 5
         BLOCK_L: int = CELL_L - (2 * CELL_PADDING)
-        BOARD_L: int = CELL_L * BOARD_N
+        BOARD_PADDING: int = 5
+        BOARD_L: int = (CELL_L * BOARD_N) + (2 * BOARD_PADDING)
+        STATUS_H: int = 50
         WINDOW_PADDING: int = 10
-        WINDOW_L: int = BOARD_L + (2 * WINDOW_PADDING)
+        WINDOW_W: int = BOARD_L + (2 * WINDOW_PADDING)
+        WINDOW_H: int = BOARD_L + STATUS_H + (3 * WINDOW_PADDING)
 
         return AppConfig(
             BOARD_N=BOARD_N,
@@ -101,8 +120,11 @@ class AppConfig:
             CELL_PADDING=CELL_PADDING,
             BLOCK_L=BLOCK_L,
             BOARD_L=BOARD_L,
+            BOARD_PADDING=BOARD_PADDING,
+            STATUS_H=STATUS_H,
             WINDOW_PADDING=WINDOW_PADDING,
-            WINDOW_L=WINDOW_L,
+            WINDOW_W=WINDOW_W,
+            WINDOW_H=WINDOW_H,
         )
 
 
@@ -119,8 +141,13 @@ class AppContext:
     This text is pre-rendered for preformance reasons.
     """
 
+    score_font: Font
+    """
+    The font used to render the score.
+    """
+
     @staticmethod
-    def new(block_text_font: Font) -> AppContext:
+    def new(block_text_font: Font, score_font: Font) -> AppContext:
         # generate block text
         block_text: dict[BlockValue | None, Surface] = {}
         for key, val in BLOCK_COLORS.items():
@@ -129,6 +156,7 @@ class AppContext:
         # return generated context
         return AppContext(
             block_text=block_text,
+            score_font=score_font,
         )
 
 
@@ -177,11 +205,15 @@ class BoardState:
     `board[row][col]`.
     """
 
+    score: int
+    """
+    The current board's game score.
+    """
+
     @staticmethod
     def new(n: int) -> BoardState:
         state = BoardState(
-            n=n,
-            board=[[0 for _ in range(n)] for _ in range(n)],
+            n=n, board=[[0 for _ in range(n)] for _ in range(n)], score=0
         )
         state._add_tile()
         state._add_tile()
@@ -201,6 +233,7 @@ class BoardState:
                 if col[i - 1] == col[i]:
                     col[i - 1] *= 2
                     col[i] = 0
+                    self.score += col[i - 1]
 
             # remove empty blocks from merge
             col = [val for val in col if val != 0]
@@ -231,6 +264,7 @@ class BoardState:
                 if col[i - 1] == col[i]:
                     col[i - 1] *= 2
                     col[i] = 0
+                    self.score += col[i - 1]
 
             # remove empty blocks from merge
             col = [val for val in col if val != 0]
@@ -263,6 +297,7 @@ class BoardState:
                 if row[i - 1] == row[i]:
                     row[i - 1] *= 2
                     row[i] = 0
+                    self.score += row[i - 1]
 
             # remove empty blocks from merge
             row = [val for val in row if val != 0]
@@ -293,6 +328,7 @@ class BoardState:
                 if row[i - 1] == row[i]:
                     row[i - 1] *= 2
                     row[i] = 0
+                    self.score += row[i - 1]
 
             # remove empty blocks from merge
             row = [val for val in row if val != 0]
@@ -368,6 +404,7 @@ class App:
         # init context
         ctx = AppContext.new(
             block_text_font=pygame.font.SysFont("Arial", 32),
+            score_font=pygame.font.SysFont("Arial", 32),
         )
 
         # init state
@@ -379,7 +416,7 @@ class App:
         )
 
         # window's surface
-        display_surf = pygame.display.set_mode((cfg.WINDOW_L, cfg.WINDOW_L))
+        display_surf = pygame.display.set_mode((cfg.WINDOW_W, cfg.WINDOW_H))
 
         return App(
             display_surf=display_surf,
@@ -411,23 +448,60 @@ class App:
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
 
+            # draw status area & score
+            status = Surface((self.cfg.BOARD_L, self.cfg.STATUS_H))
+            status.fill(COLOR_BG)
+            score = self.ctx.score_font.render(
+                str(self.state.board.score),
+                True,
+                COLOR_FG_DARK,
+            )
+            score_rect = score.get_rect(
+                center=(self.cfg.BOARD_L / 2, self.cfg.STATUS_H / 2)
+            )
+            status.blit(score, score_rect)
+
+            # draw status area onto screen
+            self.display_surf.blit(
+                status,
+                (
+                    self.cfg.WINDOW_PADDING,
+                    self.cfg.WINDOW_PADDING,
+                    # self.cfg.BOARD_L + (2 * self.cfg.WINDOW_PADDING),
+                ),
+            )
+
             # draw board
             board = Surface((self.cfg.BOARD_L, self.cfg.BOARD_L))
             board.fill(COLOR_BG)
+            pygame.draw.rect(
+                board,
+                COLOR_BOARD_BG,
+                (0, 0, self.cfg.BOARD_L, self.cfg.BOARD_L),
+                border_radius=8,
+            )
+            inner_board = Surface(
+                (self.cfg.CELL_L * self.cfg.BOARD_N, self.cfg.CELL_L * self.cfg.BOARD_N)
+            )
 
             # draw blocks onto board
             for row_i in range(self.state.board.n):
                 for col_i in range(self.state.board.n):
                     self._draw_block(
-                        board,
+                        inner_board,
                         self.state.board.board[row_i][col_i],
                         row_i,
                         col_i,
                     )
 
-            # draw board onto screen
+            # draw inner board to board and board onto screen
+            board.blit(inner_board, (self.cfg.BOARD_PADDING, self.cfg.BOARD_PADDING))
             self.display_surf.blit(
-                board, (self.cfg.WINDOW_PADDING, self.cfg.WINDOW_PADDING)
+                board,
+                (
+                    self.cfg.WINDOW_PADDING,
+                    self.cfg.STATUS_H + (2 * self.cfg.WINDOW_PADDING),
+                ),
             )
 
             # draw to display
@@ -447,7 +521,7 @@ class App:
         cell_x = col * self.cfg.CELL_L
         cell_y = row * self.cfg.CELL_L
         cell: Surface = Surface((self.cfg.CELL_L, self.cfg.CELL_L))
-        cell.fill(COLOR_BG)
+        cell.fill(COLOR_BOARD_BG)
 
         # get color
         colors = BLOCK_COLORS.get(value, BLOCK_COLORS[None])
