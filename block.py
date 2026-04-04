@@ -10,17 +10,6 @@ from pygame import Clock, Font, Surface
 type BlockValue = int
 type ColorTuple = tuple[int, int, int]
 
-# config
-BOARD_N: int = 4
-
-# size constants
-CELL_L: int = 100
-CELL_PADDING: int = 5
-BLOCK_L: int = CELL_L - (2 * CELL_PADDING)
-BOARD_L: int = CELL_L * BOARD_N
-WINDOW_PADDING: int = 10
-WINDOW_L: int = BOARD_L + (2 * WINDOW_PADDING)
-
 # color constants
 COLOR_FG_DARK: ColorTuple = (120, 111, 101)
 COLOR_FG_LIGHT: ColorTuple = (250, 246, 243)
@@ -50,6 +39,70 @@ BLOCK_COLORS: dict[BlockValue | None, tuple[ColorTuple, ColorTuple]] = {
     2048: ((237, 194, 46), COLOR_FG_LIGHT),
     None: ((62, 57, 51), COLOR_FG_LIGHT),
 }
+
+
+@dataclass(kw_only=True, frozen=True)
+class AppConfig:
+    """
+    Configuration given at application start via command line arguments and not
+    changed throughout the app lifecycle.
+    """
+
+    BOARD_N: int
+    """
+    The size of the NxN board
+    """
+
+    CELL_L: int
+    """
+    Length (width and height) of a cell.
+    """
+
+    CELL_PADDING: int
+    """
+    Amount of inner padding on each side of a cell.
+    """
+
+    BLOCK_L: int
+    """
+    Length (width and height) of a block.
+    """
+
+    BOARD_L: int
+    """
+    Length (width and height) of the board.
+    """
+
+    WINDOW_PADDING: int
+    """
+    Padding around each side of the display.
+    """
+
+    WINDOW_L: int
+    """
+    Length (width and height) of the display.
+    """
+
+    @staticmethod
+    def new(board_n: int) -> AppConfig:
+        # constants
+        BOARD_N: int = board_n
+        CELL_L: int = 100
+        CELL_PADDING: int = 5
+        BLOCK_L: int = CELL_L - (2 * CELL_PADDING)
+        BOARD_L: int = CELL_L * BOARD_N
+        WINDOW_PADDING: int = 10
+        WINDOW_L: int = BOARD_L + (2 * WINDOW_PADDING)
+
+        return AppConfig(
+            BOARD_N=BOARD_N,
+            CELL_L=CELL_L,
+            CELL_PADDING=CELL_PADDING,
+            BLOCK_L=BLOCK_L,
+            BOARD_L=BOARD_L,
+            WINDOW_PADDING=WINDOW_PADDING,
+            WINDOW_L=WINDOW_L,
+        )
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -122,6 +175,16 @@ class BoardState:
     A 2D array representing the values on the board. Indexed with
     `board[row][col]`.
     """
+
+    @staticmethod
+    def new(n: int) -> BoardState:
+        state = BoardState(
+            n=n,
+            board=[[0 for _ in range(n)] for _ in range(n)],
+        )
+        state._add_tile()
+        state._add_tile()
+        return state
 
     def move_up(self) -> None:
         for col_i in range(self.n):
@@ -267,111 +330,142 @@ class BoardState:
         self.board[row_i][col_i] = 2
 
 
-def draw_block(
-    ctx: AppContext,
-    board: Surface,
-    value: BlockValue,
-    row: int,
-    col: int,
-) -> None:
-    # block
-    cell_x = col * CELL_L
-    cell_y = row * CELL_L
-    cell: Surface = Surface((CELL_L, CELL_L))
-    cell.fill(COLOR_BG)
+@dataclass(kw_only=True)
+class App:
+    """
+    All logic pertaining to running of the application.
+    """
 
-    # get color
-    colors = BLOCK_COLORS.get(value, BLOCK_COLORS[None])
+    cfg: AppConfig
+    """
+    Static application configuration.
+    """
 
-    # draw block onto cell
-    block: Surface = Surface((BLOCK_L, BLOCK_L))
-    block.fill(colors[0])
-    cell.blit(block, (CELL_PADDING, CELL_PADDING))
+    ctx: AppContext
+    """
+    Static assets and other memoized values.
+    """
 
-    # draw text onto cell
-    text = ctx.block_text.get(value, ctx.block_text[None])
-    text_rect = text.get_rect(center=(CELL_L / 2, CELL_L / 2))
-    cell.blit(text, text_rect)
+    state: AppState
+    """
+    Mutable application state.
+    """
 
-    # draw cell onto board
-    board.blit(cell, (cell_x, cell_y))
+    display_surf: Surface
+    """
+    The root display surface.
+    """
 
+    @staticmethod
+    def new(board_n: int) -> App:
+        # init pygame
+        pygame.init()
 
-def main() -> None:
-    # init pygame
-    pygame.init()
+        # init config
+        cfg = AppConfig.new(board_n=board_n)
 
-    # window's surface
-    screen: Surface = pygame.display.set_mode((WINDOW_L, WINDOW_L))
+        # init context
+        ctx = AppContext.new(
+            block_text_font=pygame.font.SysFont("Arial", 32),
+        )
 
-    # initialize contect
-    context = AppContext.new(
-        block_text_font=pygame.font.SysFont("Arial", 32),
-    )
+        # init state
+        state = AppState(
+            running=True,
+            clock=pygame.time.Clock(),
+            dt=0.0,
+            board=BoardState.new(cfg.BOARD_N),
+        )
 
-    # initialize state
-    state = AppState(
-        running=True,
-        clock=pygame.time.Clock(),
-        dt=0.0,
-        board=BoardState(
-            n=4,
-            board=[
-                [2, 0, 0, 2],
-                [0, 4, 32, 0],
-                [0, 0, 8, 16],
-                [2, 0, 8, 0],
-            ],
-        ),
-    )
+        # window's surface
+        display_surf = pygame.display.set_mode((cfg.WINDOW_L, cfg.WINDOW_L))
 
-    # game loop
-    while state.running:
-        # update time delta
-        state.dt = state.clock.tick(60) / 1000
+        return App(
+            display_surf=display_surf,
+            cfg=cfg,
+            ctx=ctx,
+            state=state,
+        )
 
-        # process events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                state.running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key in MOVE_KEYS["up"]:
-                    state.board.move_up()
-                elif event.key in MOVE_KEYS["down"]:
-                    state.board.move_down()
-                elif event.key in MOVE_KEYS["left"]:
-                    state.board.move_left()
-                elif event.key in MOVE_KEYS["right"]:
-                    state.board.move_right()
+    def run(self) -> None:
+        # game loop
+        while self.state.running:
+            # update time delta
+            self.state.dt = self.state.clock.tick(60) / 1000
 
-        # fill screen with background
-        screen.fill(COLOR_BG)
+            # process events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state.running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key in MOVE_KEYS["up"]:
+                        self.state.board.move_up()
+                    elif event.key in MOVE_KEYS["down"]:
+                        self.state.board.move_down()
+                    elif event.key in MOVE_KEYS["left"]:
+                        self.state.board.move_left()
+                    elif event.key in MOVE_KEYS["right"]:
+                        self.state.board.move_right()
 
-        # draw board
-        board = Surface((BOARD_L, BOARD_L))
-        board.fill(COLOR_BG)
+            # fill screen with background
+            self.display_surf.fill(COLOR_BG)
 
-        # draw blocks onto board
-        for row_i in range(state.board.n):
-            for col_i in range(state.board.n):
-                draw_block(
-                    context,
-                    board,
-                    state.board.board[row_i][col_i],
-                    row_i,
-                    col_i,
-                )
+            # draw board
+            board = Surface((self.cfg.BOARD_L, self.cfg.BOARD_L))
+            board.fill(COLOR_BG)
 
-        # draw board onto screen
-        screen.blit(board, (WINDOW_PADDING, WINDOW_PADDING))
+            # draw blocks onto board
+            for row_i in range(self.state.board.n):
+                for col_i in range(self.state.board.n):
+                    self._draw_block(
+                        board,
+                        self.state.board.board[row_i][col_i],
+                        row_i,
+                        col_i,
+                    )
 
-        # draw to display
-        pygame.display.flip()
+            # draw board onto screen
+            self.display_surf.blit(
+                board, (self.cfg.WINDOW_PADDING, self.cfg.WINDOW_PADDING)
+            )
 
-    # exit game
-    pygame.quit()
+            # draw to display
+            pygame.display.flip()
+
+        # exit game
+        pygame.quit()
+
+    def _draw_block(
+        self,
+        board: Surface,
+        value: BlockValue,
+        row: int,
+        col: int,
+    ) -> None:
+        # block
+        cell_x = col * self.cfg.CELL_L
+        cell_y = row * self.cfg.CELL_L
+        cell: Surface = Surface((self.cfg.CELL_L, self.cfg.CELL_L))
+        cell.fill(COLOR_BG)
+
+        # get color
+        colors = BLOCK_COLORS.get(value, BLOCK_COLORS[None])
+
+        # draw block onto cell
+        block: Surface = Surface((self.cfg.BLOCK_L, self.cfg.BLOCK_L))
+        block.fill(colors[0])
+        cell.blit(block, (self.cfg.CELL_PADDING, self.cfg.CELL_PADDING))
+
+        # draw text onto cell
+        text = self.ctx.block_text.get(value, self.ctx.block_text[None])
+        text_rect = text.get_rect(center=(self.cfg.CELL_L / 2, self.cfg.CELL_L / 2))
+        cell.blit(text, text_rect)
+
+        # draw cell onto board
+        board.blit(cell, (cell_x, cell_y))
 
 
 # when run as script
 if __name__ == "__main__":
-    main()
+    app = App.new(4)
+    app.run()
