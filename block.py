@@ -1,5 +1,6 @@
 # module imports
 import pygame
+import random
 
 # item imports
 from dataclasses import dataclass
@@ -148,6 +149,9 @@ class BoardState:
             for row_i in range(self.n):
                 self.board[row_i][col_i] = col[row_i]
 
+        # add tile
+        self._add_tile()
+
     def move_down(self) -> None:
         for col_i in range(self.n):
             # generate reverse column without empty blocks
@@ -178,6 +182,9 @@ class BoardState:
             for row_i in range(self.n):
                 self.board[row_i][col_i] = col[row_i]
 
+        # add tile
+        self._add_tile()
+
     def move_left(self) -> None:
         for row_i in range(self.n):
             # generate row without empty blocks
@@ -203,6 +210,9 @@ class BoardState:
             # write back to grid
             for col_i in range(self.n):
                 self.board[row_i][col_i] = row[col_i]
+
+        # add tile
+        self._add_tile()
 
     def move_right(self) -> None:
         for row_i in range(self.n):
@@ -233,6 +243,28 @@ class BoardState:
             # write back to grid
             for col_i in range(self.n):
                 self.board[row_i][col_i] = row[col_i]
+
+        # add tile
+        self._add_tile()
+
+    def _add_tile(self) -> None:
+        # get all empty cells
+        empty_cells = [
+            (row_i, col_i)
+            for row_i in range(self.n)
+            for col_i in range(self.n)
+            if self.board[row_i][col_i] == 0
+        ]
+
+        # skip adding if board is full
+        if len(empty_cells) == 0:
+            return
+
+        # pick random cell
+        row_i, col_i = random.choice(empty_cells)
+
+        # place a 2 block here
+        self.board[row_i][col_i] = 2
 
 
 def draw_block(
