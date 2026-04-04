@@ -1,4 +1,5 @@
 # module imports
+import argparse
 import pygame
 import random
 
@@ -467,5 +468,22 @@ class App:
 
 # when run as script
 if __name__ == "__main__":
-    app = App.new(4)
+    # create argparser
+    parser = argparse.ArgumentParser(
+        prog="block.py",
+        description="A 2048 game demo",
+    )
+    parser.add_argument(
+        "-n",
+        "--board-size",
+        help="size of the NxN board",
+        default=4,
+        type=int,
+    )
+
+    # parse arguments
+    args = parser.parse_args()
+
+    # create & run app
+    app = App.new(board_n=args.board_size)
     app.run()
