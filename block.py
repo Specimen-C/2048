@@ -347,24 +347,29 @@ class BoardState:
         # add tile
         self._add_tile()
 
-    def _add_tile(self) -> None:
-        # get all empty cells
-        empty_cells = [
-            (row_i, col_i)
-            for row_i in range(self.n)
-            for col_i in range(self.n)
-            if self.board[row_i][col_i] == 0
-        ]
+    def _add_tile(self, minimizer: bool = False, domain: list[int] = [2, 4]) -> None:
+        #If we want a minimizing agent. By default set to false
+        if minimizer:
+            
+            pass
+        else:
+            # get all empty cells
+            empty_cells = [
+                (row_i, col_i)
+                for row_i in range(self.n)
+                for col_i in range(self.n)
+                if self.board[row_i][col_i] == 0
+            ]
 
-        # skip adding if board is full
-        if len(empty_cells) == 0:
-            return
+            # skip adding if board is full
+            if len(empty_cells) == 0:
+                return
 
-        # pick random cell
-        row_i, col_i = random.choice(empty_cells)
-
-        # place a 2 block here
-        self.board[row_i][col_i] = 2
+            # pick random cell
+            row_i, col_i = random.choice(empty_cells)
+            
+            # place a block from the domain here
+            self.board[row_i][col_i] = random.choice(domain)
 
 
 @dataclass(kw_only=True)
