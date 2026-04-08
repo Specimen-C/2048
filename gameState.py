@@ -26,8 +26,8 @@ class gameState:
             for _ in range(4):
                 self.board[i].append(None)
         
-        self.score = 0
-        self.freeSpaces = 16
+        self.score: int = 0
+        self.freeSpaces: int = 16
         return None
     
     """
