@@ -1,100 +1,136 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from tileClass import TileClass
 
-"""
-Represents any one state of the 2048 game. 
-s
-Fields:
-    list[list] board = nested lists containing the tile classes
-    int score = Total score of the current board
-    int freeSpaces = Number of board spaces not containing a tile
-"""
-class gameState:
+# local item imports
+from action import Action
+from adversary import Adversary
+from tile import Tile
+
+
+class GameState:
     """
-    Default initializer. Instantiates all class variables for a empty gameState 
+    Represents any one state of the 2048 game.
+    Fields:
+        list[list] board = nested lists containing the tile classes
+        int score = Total score of the current board
+        int freeSpaces = Number of board spaces not containing a tile
     """
-    def __init__(self):
-        #Create original list
-        self.board: list[list[TileClass | None]] = list()
-        
-        #Add 4 empty lists to our board
-        for i in range(len(self.board)):
-            #Add 4 empty lists to each list in list
+
+    def __init__(self, n: int) -> None:
+        """
+        Default initializer. Instantiates all class variables for a empty
+        GameState.
+        """
+        # Create original list
+        board: list[list[Tile | None]] = list()
+        for i in range(n):
+            # Add n empty lists to each list in list
             self.board.append(list())
-            for _ in range(4):
+            for _ in range(n):
                 self.board[i].append(None)
-        
+
+        # instance vars
+        self.board: list[list[Tile | None]] = board
         self.score: int = 0
-        self.freeSpaces: int = 16
-        return None
-    
-    """
-    Create a gameState from another gameState. 
-    Might not be necessary or should be copy function
-    """
-    def copy(self, state: gameState):
-        self.board = deepcopy(gameState.board)
-        self.score = gameState.score
-        self.freeSpaces = gameState.freeSpaces
-    
-    def move(self, direction):
-        if direction not in ["up", "down", "left", "right"]:
-            return
-        
-        if self.checkLegal(direction) == False:
-            return
-        
+        self.n: int = n
+
+    @property
+    def emptySpaces(self) -> int:
+        """
+        Number of empty spaces on the board.
+        """
+        count: int = 0
         for row in self.board:
             for tile in row:
-                if self.checkConflict(tile, direction) == False:
-                    
-                    
+                if tile is None:
+                    count += 1
+        return count
+
+    def _copy(self) -> GameState:
+        """
+        Create another instance of GameState from this GameState.
+        """
+        return deepcopy(self)
+
+    def generateSuccessors(
+        self,
+        adversary: Adversary,
+    ) -> dict[Action, list[tuple[float, GameState]]]:
+        # TODO: implement
+        raise NotImplementedError
+
+    def move(self, action: Action, adversary: Adversary) -> GameState:
+        # TODO: implement
+        raise NotImplementedError
+
         
-        
-        
-    def checkLegal(self, direction: str):
-        if direction not in ["up", "down", "left", "right"]:
-            return
-        
-    def checkConflict(self, tile, direction):
-        #Find the first non empty slot
-        if direction == "up":
-            #Check top of column to tile (1, 2, TILE)
-            for gridY in range(tile.gridY).__reversed__:
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
+
+    def _merge(self, tile1: Tile, tile2: Tile) -> None:
+        # TODO: implement
+        raise NotImplementedError
+
+    def checkConflict(self, tile: Tile, action: Action) -> bool:
+        # Find the first non empty slot
+        if action is Action.UP:
+            # Check top of column to tile (1, 2, TILE)
+            for gridY in reversed(range(tile.y)):
+                tileToCheck = self.board[tile.x][gridY]
+                if tileToCheck is not None and tileToCheck.value == tile.value:
                     return True
             return False
-        elif direction == "down":
-            #Check tile + 1 to bottom of column (Tile, 3, 4)
-            for gridY in range(tile.gridY + 1, len(self.board[tile.gridX])):
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
+        elif action is Action.DOWN:
+            # Check tile + 1 to bottom of column (Tile, 3, 4)
+            for gridY in range(tile.y + 1, len(self.board[tile.x])):
+                tileToCheck = self.board[tile.x][gridY]
+                if tileToCheck is not None and tileToCheck.value == tile.value:
                     return True
             return False
+        elif action is Action.LEFT:
+            # Check leftmost column to TILE (1, 2, Tile)
+            for gridY in reversed(range(tile.x)):
+                tileToCheck = self.board[tile.x][gridY]
+                if tileToCheck is not None and tileToCheck.value == tile.value:
+                    return True
+            return False
+        elif action is Action.RIGHT:
+            # Check TILE + 1 to end of row (Tile, 3, 4)
+            for gridY in range(tile.x + 1, len(self.board[tile.y])):
+                tileToCheck = self.board[tile.x][gridY]
+                if tileToCheck is not None and tileToCheck.value == tile.value:
+                    return True
+            return False
+
+    def isLoss(self) -> bool:
+        if self.emptySpaces() == 0:
+            return False
+        
+        for action in self.getLegalActions():
+            #TODO Get real adversary or add movement logic here
+            newState = self.move(action, Adversary())
+            if newState != self:
+                return False
             
-        elif direction == "left":
-            #Check leftmost column to TILE (1, 2, Tile)
-            for gridY in range(tile.gridX).__reversed__:
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
-                    return True
-            return False
-        elif direction == "right":
-            #Check TILE + 1 to end of row (Tile, 3, 4)
-            for gridY in range(tile.gridX + 1, len(self.board[tile.gridY])):
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
-                    return True
+        return True         
+        
+    def getLegalActions(self):
+        pass
+
+    
+    def printGameState(self):
+        print("Current score = " + str(self.score))
+        for row in self.board:
+            for tile in row:
+                print(" | " + str(tile) + " | ")
+            print("\n")
+            
+    def __eq__(self, state: GameState) -> bool:
+        if self.score != state.score:
             return False
         
-    
-    def isLoss():
-        pass
-        
-    def isWin():
-        pass
-    
-    
+        for row, rowIndex in enumerate(self.board):
+            for tile, colIndex in enumerate(row):
+                if tile != state.board[rowIndex][colIndex]:
+                    return False
+                
+        return True
