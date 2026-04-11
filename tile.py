@@ -48,7 +48,7 @@ class Tile:
             raise ValueError("Tile must be an int")
         if value < 0:
             raise ValueError("Tile cannot have a negative value")
-        
+
         # Check if value is a power of two with bit masks.
         # Since a power of two has only one bit set to on, 
         # we can bitwise and with 1 - value, and that will
@@ -58,3 +58,6 @@ class Tile:
         
         self.value = value
         return
+
+    def __str__(self):
+        return "Location = " + str(self.location) + ": " + str(self.value)

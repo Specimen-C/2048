@@ -106,3 +106,10 @@ class GameState:
 
     def isWin(self) -> bool:
         raise NotImplementedError
+    
+    def printGameState(self):
+        print("Current score = " + str(self.score))
+        for row in self.board:
+            for tile in row:
+                print(" | " + str(tile) + " | ")
+            print("\n")
