@@ -1,14 +1,17 @@
 # module imports
 import argparse
 import pygame
-import random
 
 # item imports
 from dataclasses import dataclass
 from pygame import Clock, Font, Surface
 
+# local imports
+from action import Action
+from gameState import GameState, DummyAdversary
+from tile import Tile
+
 # types
-type BlockValue = int
 type ColorTuple = tuple[int, int, int]
 
 # color constants
@@ -18,29 +21,49 @@ COLOR_BOARD_BG: ColorTuple = (187, 174, 161)
 COLOR_BG: ColorTuple = (250, 248, 239)
 
 # key mappings
-MOVE_KEYS: dict[str, list[int]] = {
-    "up": [pygame.K_w, pygame.K_UP],
-    "down": [pygame.K_s, pygame.K_DOWN],
-    "left": [pygame.K_a, pygame.K_LEFT],
-    "right": [pygame.K_d, pygame.K_RIGHT],
+KEYBINDS: dict[int, Action] = {
+    pygame.K_w: Action.UP,
+    pygame.K_s: Action.DOWN,
+    pygame.K_a: Action.LEFT,
+    pygame.K_d: Action.RIGHT,
+    pygame.K_UP: Action.UP,
+    pygame.K_DOWN: Action.DOWN,
+    pygame.K_LEFT: Action.LEFT,
+    pygame.K_RIGHT: Action.RIGHT,
 }
 
-# color mappings
-BLOCK_COLORS: dict[BlockValue | None, tuple[ColorTuple, ColorTuple]] = {
-    0: ((204, 193, 180), (204, 193, 180)),
-    2: ((239, 229, 218), COLOR_FG_DARK),
-    4: ((237, 225, 200), COLOR_FG_DARK),
-    8: ((242, 177, 122), COLOR_FG_LIGHT),
-    16: ((245, 150, 100), COLOR_FG_LIGHT),
-    32: ((247, 124, 97), COLOR_FG_LIGHT),
-    64: ((247, 94, 60), COLOR_FG_LIGHT),
-    128: ((237, 207, 115), COLOR_FG_LIGHT),
-    256: ((238, 204, 99), COLOR_FG_LIGHT),
-    512: ((237, 201, 80), COLOR_FG_LIGHT),
-    1024: ((237, 197, 63), COLOR_FG_LIGHT),
-    2048: ((237, 194, 46), COLOR_FG_LIGHT),
-    None: ((62, 57, 51), COLOR_FG_LIGHT),
-}
+
+def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
+    # no tile
+    if tile is None:
+        return ((204, 193, 180), (204, 193, 180))
+
+    # tile with value
+    match tile.value:
+        case 2:
+            return ((239, 229, 218), COLOR_FG_DARK)
+        case 4:
+            return ((237, 225, 200), COLOR_FG_DARK)
+        case 8:
+            return ((242, 177, 122), COLOR_FG_LIGHT)
+        case 16:
+            return ((245, 150, 100), COLOR_FG_LIGHT)
+        case 32:
+            return ((247, 124, 97), COLOR_FG_LIGHT)
+        case 64:
+            return ((247, 94, 60), COLOR_FG_LIGHT)
+        case 128:
+            return ((237, 207, 115), COLOR_FG_LIGHT)
+        case 256:
+            return ((238, 204, 99), COLOR_FG_LIGHT)
+        case 512:
+            return ((237, 201, 80), COLOR_FG_LIGHT)
+        case 1024:
+            return ((237, 197, 63), COLOR_FG_LIGHT)
+        case 2048:
+            return ((237, 194, 46), COLOR_FG_LIGHT)
+        case _:
+            return ((62, 57, 51), COLOR_FG_LIGHT)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -135,7 +158,7 @@ class AppContext:
     should be initialized once and should not change.
     """
 
-    block_text: dict[BlockValue | None, Surface]
+    block_text: dict[int, Surface]
     """
     Collection of rendered text surfaces associated with a given block value.
     This text is pre-rendered for preformance reasons.
@@ -149,9 +172,13 @@ class AppContext:
     @staticmethod
     def new(block_text_font: Font, score_font: Font) -> AppContext:
         # generate block text
-        block_text: dict[BlockValue | None, Surface] = {}
-        for key, val in BLOCK_COLORS.items():
-            block_text[key] = block_text_font.render(str(key), True, val[1])
+        block_text: dict[int, Surface] = {}
+        i = 2
+        while i <= 8192:
+            block_text[i] = block_text_font.render(
+                str(i), True, get_tile_colors(Tile.newWithoutLocation(i))[1]
+            )
+            i *= 2
 
         # return generated context
         return AppContext(
@@ -177,7 +204,7 @@ class AppState:
     The amount of time in seconds since the last frame was rendered.
     """
 
-    board: BoardState
+    game: GameState
     """
     The 2048 game's board state.
     """
@@ -186,190 +213,6 @@ class AppState:
     """
     The game clock.
     """
-
-
-@dataclass(kw_only=True)
-class BoardState:
-    """
-    State of the 2048 board.
-    """
-
-    n: int
-    """
-    The width of the square board.
-    """
-
-    board: list[list[BlockValue]]
-    """
-    A 2D array representing the values on the board. Indexed with
-    `board[row][col]`.
-    """
-
-    score: int
-    """
-    The current board's game score.
-    """
-
-    @staticmethod
-    def new(n: int) -> BoardState:
-        state = BoardState(
-            n=n, board=[[0 for _ in range(n)] for _ in range(n)], score=0
-        )
-        state._add_tile()
-        state._add_tile()
-        return state
-
-    def move_up(self) -> None:
-        for col_i in range(self.n):
-            # generate column without empty blocks
-            col = [
-                self.board[row_i][col_i]
-                for row_i in range(self.n)
-                if self.board[row_i][col_i] != 0
-            ]
-
-            # merge adjacents
-            for i in range(1, len(col)):
-                if col[i - 1] == col[i]:
-                    col[i - 1] *= 2
-                    col[i] = 0
-                    self.score += col[i - 1]
-
-            # remove empty blocks from merge
-            col = [val for val in col if val != 0]
-
-            # pad with 0s
-            for _ in range(self.n - len(col)):
-                col.append(0)
-
-            # write back to grid
-            for row_i in range(self.n):
-                self.board[row_i][col_i] = col[row_i]
-
-        # add tile
-        self._add_tile()
-
-    def move_down(self) -> None:
-        for col_i in range(self.n):
-            # generate reverse column without empty blocks
-            col = [
-                self.board[row_i][col_i]
-                for row_i in range(self.n)
-                if self.board[row_i][col_i] != 0
-            ]
-            col = list(reversed(col))
-
-            # merge adjacents
-            for i in range(1, len(col)):
-                if col[i - 1] == col[i]:
-                    col[i - 1] *= 2
-                    col[i] = 0
-                    self.score += col[i - 1]
-
-            # remove empty blocks from merge
-            col = [val for val in col if val != 0]
-
-            # pad with 0s
-            for _ in range(self.n - len(col)):
-                col.append(0)
-
-            # re-reverse col
-            col = list(reversed(col))
-
-            # write back to grid
-            for row_i in range(self.n):
-                self.board[row_i][col_i] = col[row_i]
-
-        # add tile
-        self._add_tile()
-
-    def move_left(self) -> None:
-        for row_i in range(self.n):
-            # generate row without empty blocks
-            row = [
-                self.board[row_i][col_i]
-                for col_i in range(self.n)
-                if self.board[row_i][col_i] != 0
-            ]
-
-            # merge adjacents
-            for i in range(1, len(row)):
-                if row[i - 1] == row[i]:
-                    row[i - 1] *= 2
-                    row[i] = 0
-                    self.score += row[i - 1]
-
-            # remove empty blocks from merge
-            row = [val for val in row if val != 0]
-
-            # pad with 0s
-            for _ in range(self.n - len(row)):
-                row.append(0)
-
-            # write back to grid
-            for col_i in range(self.n):
-                self.board[row_i][col_i] = row[col_i]
-
-        # add tile
-        self._add_tile()
-
-    def move_right(self) -> None:
-        for row_i in range(self.n):
-            # generate row without empty blocks
-            row = [
-                self.board[row_i][col_i]
-                for col_i in range(self.n)
-                if self.board[row_i][col_i] != 0
-            ]
-            row = list(reversed(row))
-
-            # merge adjacents
-            for i in range(1, len(row)):
-                if row[i - 1] == row[i]:
-                    row[i - 1] *= 2
-                    row[i] = 0
-                    self.score += row[i - 1]
-
-            # remove empty blocks from merge
-            row = [val for val in row if val != 0]
-
-            # pad with 0s
-            for _ in range(self.n - len(row)):
-                row.append(0)
-
-            # re-reverse rol
-            row = list(reversed(row))
-
-            # write back to grid
-            for col_i in range(self.n):
-                self.board[row_i][col_i] = row[col_i]
-
-        # add tile
-        self._add_tile()
-
-    def _add_tile(self, minimizer: bool = False, domain: list[int] = [2, 4]) -> None:
-        #If we want a minimizing agent. By default set to false
-        if minimizer:
-            
-            pass
-        else:
-            # get all empty cells
-            empty_cells = [
-                (row_i, col_i)
-                for row_i in range(self.n)
-                for col_i in range(self.n)
-                if self.board[row_i][col_i] == 0
-            ]
-
-            # skip adding if board is full
-            if len(empty_cells) == 0:
-                return
-
-            # pick random cell
-            row_i, col_i = random.choice(empty_cells)
-            
-            # place a block from the domain here
-            self.board[row_i][col_i] = random.choice(domain)
 
 
 @dataclass(kw_only=True)
@@ -417,7 +260,7 @@ class App:
             running=True,
             clock=pygame.time.Clock(),
             dt=0.0,
-            board=BoardState.new(cfg.BOARD_N),
+            game=GameState.startState(cfg.BOARD_N, DummyAdversary()),
         )
 
         # window's surface
@@ -441,14 +284,9 @@ class App:
                 if event.type == pygame.QUIT:
                     self.state.running = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key in MOVE_KEYS["up"]:
-                        self.state.board.move_up()
-                    elif event.key in MOVE_KEYS["down"]:
-                        self.state.board.move_down()
-                    elif event.key in MOVE_KEYS["left"]:
-                        self.state.board.move_left()
-                    elif event.key in MOVE_KEYS["right"]:
-                        self.state.board.move_right()
+                    action = KEYBINDS.get(event.key)
+                    if action is not None:
+                        self.state.game = self.state.game.move(action, DummyAdversary())
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
@@ -457,7 +295,7 @@ class App:
             status = Surface((self.cfg.BOARD_L, self.cfg.STATUS_H))
             status.fill(COLOR_BG)
             score = self.ctx.score_font.render(
-                str(self.state.board.score),
+                str(self.state.game.score),
                 True,
                 COLOR_FG_DARK,
             )
@@ -490,11 +328,11 @@ class App:
             )
 
             # draw blocks onto board
-            for row_i in range(self.state.board.n):
-                for col_i in range(self.state.board.n):
+            for row_i in range(self.state.game.n):
+                for col_i in range(self.state.game.n):
                     self._draw_block(
                         inner_board,
-                        self.state.board.board[row_i][col_i],
+                        self.state.game.board[row_i][col_i],
                         row_i,
                         col_i,
                     )
@@ -518,7 +356,7 @@ class App:
     def _draw_block(
         self,
         board: Surface,
-        value: BlockValue,
+        tile: Tile | None,
         row: int,
         col: int,
     ) -> None:
@@ -529,7 +367,7 @@ class App:
         cell.fill(COLOR_BOARD_BG)
 
         # get color
-        colors = BLOCK_COLORS.get(value, BLOCK_COLORS[None])
+        colors = get_tile_colors(tile)
 
         # draw block onto cell
         block: Surface = Surface((self.cfg.BLOCK_L, self.cfg.BLOCK_L))
@@ -537,9 +375,15 @@ class App:
         cell.blit(block, (self.cfg.CELL_PADDING, self.cfg.CELL_PADDING))
 
         # draw text onto cell
-        text = self.ctx.block_text.get(value, self.ctx.block_text[None])
-        text_rect = text.get_rect(center=(self.cfg.CELL_L / 2, self.cfg.CELL_L / 2))
-        cell.blit(text, text_rect)
+        if tile is not None:
+            text = self.ctx.block_text.get(
+                tile.value, self.ctx.block_text.get(tile.value)
+            )
+            if text is not None:
+                text_rect = text.get_rect(
+                    center=(self.cfg.CELL_L / 2, self.cfg.CELL_L / 2)
+                )
+                cell.blit(text, text_rect)
 
         # draw cell onto board
         board.blit(cell, (cell_x, cell_y))
