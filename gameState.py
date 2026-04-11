@@ -64,10 +64,7 @@ class GameState:
         # TODO: implement
         raise NotImplementedError
 
-        for row in self.board:
-            for tile in row:
-                if not self.checkConflict(tile, action):
-                    ...
+        
 
     def _merge(self, tile1: Tile, tile2: Tile) -> None:
         # TODO: implement

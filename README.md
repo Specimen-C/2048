@@ -15,5 +15,5 @@
 - Add an adversary = (YG)
     - Scores positions for new tiles
     - Picks randomly from the top `k` places
-- Agent class (can be random for now) = Han
+- Agent class (can be random for now) = (Han)
     - Evaluation function for gameState
