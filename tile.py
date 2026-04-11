@@ -60,4 +60,4 @@ class Tile:
         return
 
     def __str__(self):
-        return "Location = " + str(self.location) + ": " + str(self.value)
+        return "Tile Location = " + str(self.location) + ": " + str(self.value)
