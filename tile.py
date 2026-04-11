@@ -61,3 +61,11 @@ class Tile:
 
     def __str__(self):
         return "Tile Location = " + str(self.location) + ": " + str(self.value)
+    
+    def __eq__(self, tile: Tile):
+        if tile.location != self.location:
+            return False
+        if tile.value != self.value:
+            return False
+        
+        return True

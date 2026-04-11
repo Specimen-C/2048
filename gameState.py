@@ -102,10 +102,20 @@ class GameState:
             return False
 
     def isLoss(self) -> bool:
-        raise NotImplementedError
+        if self.emptySpaces() == 0:
+            return False
+        
+        for action in self.getLegalActions():
+            #TODO Get real adversary or add movement logic here
+            newState = self.move(action, Adversary())
+            if newState != self:
+                return False
+            
+        return True         
+        
+    def getLegalActions(self):
+        pass
 
-    def isWin(self) -> bool:
-        raise NotImplementedError
     
     def printGameState(self):
         print("Current score = " + str(self.score))
@@ -113,3 +123,14 @@ class GameState:
             for tile in row:
                 print(" | " + str(tile) + " | ")
             print("\n")
+            
+    def __eq__(self, state: GameState) -> bool:
+        if self.score != state.score:
+            return False
+        
+        for row, rowIndex in enumerate(self.board):
+            for tile, colIndex in enumerate(row):
+                if tile != state.board[rowIndex][colIndex]:
+                    return False
+                
+        return True
