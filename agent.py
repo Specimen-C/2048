@@ -24,8 +24,54 @@ class Agent:
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState):
-        #lowkey i dont wanna hardcode corners but i might idk
-        pass
+        val = 0
+        board = gameState.board
+        numTiles = 0
+        sizeTiles = 0
+        
+        #find the max tile in board
+        maxtile = 0
+        for r in board:
+            for c in board[r]:
+                tile = board[r][c]
+                if (tile != None and tile.value > maxtile): 
+                    maxtile = tile
+                if (tile != None):
+                    numTiles += 1
+                sizeTiles += 1
+        
+        #   Sloppy but it works for looking at corners.
+        #   If the biggest tile is in corner (if not None), add points to eval function
+        #NOTE: possible edge case of multiple "max tiles" and it doesnt want to merge
+        if (board[0][0] != None):
+            if (board[0][0].value == maxtile):
+                val += 100
+        elif (board[0][len(board) - 1] != None):
+            if (board[0][len(board) - 1].value == maxtile):
+                val += 100
+        elif (board[len(board) - 1][0] != None):
+            if (board[len(board) - 1][0].value == maxtile):
+                val += 100
+        elif (board[len(board) - 1][len(board) - 1] != None):
+            if (board[len(board) - 1][len(board) - 1].value == maxtile):
+                val += 100
+        
+        #   Incentivise less tiles in board
+        #   made up BS lowkey, cant simulate this until the thingy actually works
+        if(numTiles <= 2*len(board)):
+            val += 100
+        elif(numTiles <= 2.5*len(board)):
+            val += 80
+        elif(numTiles <= 3*len(board)):
+            val += 50
+        elif(numTiles <= 3.5*len(board)):
+            val += 30
+        elif(numTiles <= 4*len(board)):
+            val += 10
+        elif(numTiles == sizeTiles):
+            val -= 100
+
+        return val
 
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
