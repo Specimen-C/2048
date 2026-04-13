@@ -220,6 +220,10 @@ class GameState:
         # add tile
         newState = adversary.getPlacement(newState)
         newState
+        
+        print("GameState = ")
+        newState.printGameState()
+        
         return newState
 
     def isLoss(self) -> bool:
@@ -239,10 +243,10 @@ class GameState:
 
     def printGameState(self) -> None:
         print("Current score = " + str(self.score))
-        for row in self.board:
-            for tile in row:
-                print(" | " + str(tile) + " | ")
-            print("\n")
+        for i in range(len(self.board[0])):
+            for tile in self.board[i]:
+                print(" | " + str(tile) + " | \t", end="")
+            print('')
 
     def __eq__(self, state: object) -> bool:
 
@@ -262,17 +266,12 @@ class GameState:
     #
     # helper methods
     #
-
     def _copy(self) -> GameState:
         """
         Create another instance of GameState from this GameState.
         """
         return deepcopy(self)
-
-    #
-    # helper functions
-    #
-
+    
     @staticmethod
     def _mergeLine(line: list[Tile | None]) -> tuple[list[Tile | None], int]:
         """
