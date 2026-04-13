@@ -127,12 +127,85 @@ class GameState:
     # api methods
     #
 
-    def generateSuccessors(
-        self,
-        adversary: Adversary,
-    ) -> dict[Action, list[tuple[float, GameState]]]:
-        # TODO: implement
-        raise NotImplementedError
+    def generateSuccessors(self,adversary: Adversary) -> dict[Action, list[tuple[float, GameState]]]:        
+        successors = {}
+        
+        #Loop through each legal action
+        for action in self.getLegalActions():
+            #Create a new state without placing a tile
+            newState = self._copy()
+            
+            # merge based on action
+            match action:
+                case Action.UP:
+                    for colIdx in range(newState.n):
+                        # generate col
+                        col = [newState.board[rowIdx][colIdx] for rowIdx in range(newState.n)]
+
+                        # merge
+                        col, addScore = GameState._mergeLine(col)
+
+                        # write back to grid
+                        newState.score += addScore
+                        for rowIdx in range(newState.n):
+                            newState.board[rowIdx][colIdx] = col[colIdx]
+                case Action.DOWN:
+                    for colIdx in range(self.n):
+                        # generate reverse col
+                        col = [newState.board[rowIdx][colIdx] for rowIdx in range(newState.n)]
+                        col.reverse()
+
+                        # merge and reverse
+                        col, addScore = GameState._mergeLine(col)
+                        col.reverse()
+
+                        # write back to grid
+                        newState.score += addScore
+                        for rowIdx in range(newState.n):
+                            newState.board[rowIdx][colIdx] = col[rowIdx]
+                case Action.LEFT:
+                    for rowIdx in range(self.n):
+                        # generate row
+                        row = [newState.board[rowIdx][colIdx] for colIdx in range(newState.n)]
+
+                        # merge
+                        row, addScore = GameState._mergeLine(row)
+
+                        # write back to grid
+                        newState.score += addScore
+                        for colIdx in range(newState.n):
+                            newState.board[rowIdx][colIdx] = row[colIdx]
+                case Action.RIGHT:
+                    for rowIdx in range(self.n):
+                        # generate reverse row
+                        row = [newState.board[rowIdx][colIdx] for colIdx in range(newState.n)]
+                        row.reverse()
+
+                        # merge and reverse
+                        row, addScore = GameState._mergeLine(row)
+                        row.reverse()
+
+                        # write back to grid
+                        newState.score += addScore
+                        for colIdx in range(newState.n):
+                            newState.board[rowIdx][colIdx] = row[colIdx]
+
+            # update locations
+            for rowIdx in range(newState.n):
+                for colIdx in range(newState.n):
+                    # get tile
+                    tile = newState.board[rowIdx][colIdx]
+                    if tile is None:
+                        continue
+
+                    # update tile
+                    tile.location = (rowIdx, colIdx)
+            
+            
+            successors[action] = adversary.generateSuccessors(newState)
+        
+        #After creating distributions for each action, return
+        return successors
 
     def move(self, action: Action, adversary: Adversary) -> GameState:
         """
