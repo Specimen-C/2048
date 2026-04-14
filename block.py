@@ -276,6 +276,7 @@ class App:
     def run(self) -> None:
         # game loop
         while self.state.running:
+            
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
@@ -286,7 +287,10 @@ class App:
                 elif event.type == pygame.KEYDOWN:
                     action = KEYBINDS.get(event.key)
                     if action is not None:
-                        self.state.game = self.state.game.move(action, DummyAdversary())
+                        self.state.game = self.state.game.takeTurn(action, DummyAdversary())
+                        if self.state.game.isLoss():
+                            print("You lost")
+                            #break
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)

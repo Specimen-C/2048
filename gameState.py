@@ -227,17 +227,20 @@ class GameState:
         if self.emptySpaces != 0:
             return False
 
-        return not (len(self.getLegalActions()) == 0)
+        return (len(self.getLegalActions()) == 0)
         
 
     def getLegalActions(self) -> list[Action]:
         legalActions: list[Action] = []
         
         for action in Action:
+            print("Checking action" + str(action))
             tempState = self._move(action)
             if tempState != self:
-                legalActions.append()
+                legalActions.append(action)
                 
+                
+        print("LegalActions = " + str(legalActions))
         return legalActions
             
 
@@ -288,7 +291,7 @@ class GameState:
                     for rowIdx in range(newState.n):
                         newState.board[rowIdx][colIdx] = col[rowIdx]
             case Action.DOWN:
-                for colIdx in range(newState):
+                for colIdx in range(newState.n):
                     # generate reverse col
                     col = [newState.board[rowIdx][colIdx] for rowIdx in range(newState.n)]
                     col.reverse()
@@ -302,7 +305,7 @@ class GameState:
                     for rowIdx in range(newState.n):
                         newState.board[rowIdx][colIdx] = col[rowIdx]
             case Action.LEFT:
-                for rowIdx in range(newState):
+                for rowIdx in range(newState.n):
                     # generate row
                     row = [newState.board[rowIdx][colIdx] for colIdx in range(newState.n)]
 
@@ -339,12 +342,8 @@ class GameState:
                 # update tile
                 tile.location = (rowIdx, colIdx)
 
-        # add tile
-        newState = adversary.getPlacement(newState)
-        newState
-
-        print("GameState = ")
-        newState.printGameState()
+        #print("GameState = ")
+        #newState.printGameState()
 
         return newState
 
