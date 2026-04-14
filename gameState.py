@@ -1,109 +1,307 @@
-from __future__ import annotations
+# module imports
+import random
 
+# item imports
 from copy import deepcopy
-from tileClass import TileClass
 
-"""
-Represents any one state of the 2048 game. 
-s
-Fields:
-    list[list] board = nested lists containing the tile classes
-    int score = Total score of the current board
-    int freeSpaces = Number of board spaces not containing a tile
-"""
-class gameState:
+# local item imports
+from abc import ABC, abstractmethod
+from action import Action
+from dataclasses import dataclass
+from tile import Tile
+
+
+@dataclass
+class Adversary(ABC):
+    @abstractmethod
+    def generateSuccessors(self, state: GameState) -> list[tuple[float, GameState]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def getPlacement(self, state: GameState) -> GameState:
+        raise NotImplementedError
+
+
+@dataclass
+class DummyAdversary(Adversary):
+    def generateSuccessors(self, state: GameState) -> list[tuple[float, GameState]]:
+        raise NotImplementedError
+
+    def getPlacement(self, state: GameState) -> GameState:
+        # create copy of state
+        state = deepcopy(state)
+
+        # get all empty cells
+        emptyCells = [
+            (rowIdx, colIdx)
+            for rowIdx in range(state.n)
+            for colIdx in range(state.n)
+            if state.board[rowIdx][colIdx] is None
+        ]
+
+        # skip adding if board is full
+        if len(emptyCells) == 0:
+            return state
+
+        # pick random cell
+        rowIdx, colIdx = random.choice(emptyCells)
+
+        # place a block from the domain here
+        state.board[rowIdx][colIdx] = Tile(value=2, row=rowIdx, col=colIdx)
+
+        return state
+
+
+@dataclass(init=False)
+class GameState:
     """
-    Default initializer. Instantiates all class variables for a empty gameState 
+    Represents any one state of the 2048 game.
     """
-    def __init__(self):
-        #Create original list
-        self.board: list[list[TileClass | None]] = list()
-        
-        #Add 4 empty lists to our board
-        for i in range(len(self.board)):
-            #Add 4 empty lists to each list in list
-            self.board.append(list())
-            for _ in range(4):
-                self.board[i].append(None)
-        
-        self.score = 0
-        self.freeSpaces = 16
-        return None
-    
+
+    #
+    # fields
+    #
+
+    board: list[list[Tile | None]]
     """
-    Create a gameState from another gameState. 
-    Might not be necessary or should be copy function
+    Nested lists containing the tile objects.
     """
-    def copy(self, state: gameState):
-        self.board = deepcopy(gameState.board)
-        self.score = gameState.score
-        self.freeSpaces = gameState.freeSpaces
-    
-    def move(self, direction):
-        if direction not in ["up", "down", "left", "right"]:
-            return
-        
-        if self.checkLegal(direction) == False:
-            return
-        
+
+    score: int
+    """
+    Total score of the current board.
+    """
+
+    n: int
+    """
+    Size of the NxN board.
+    """
+
+    #
+    # dynamic properties
+    #
+
+    @property
+    def emptySpaces(self) -> int:
+        """
+        Number of empty spaces on the board.
+        """
+        count: int = 0
         for row in self.board:
             for tile in row:
-                if self.checkConflict(tile, direction) == False:
-                    
-                    
-        
-        
-        
-    def checkLegal(self, direction: str):
-        if direction not in ["up", "down", "left", "right"]:
-            return
-        
-    def checkConflict(self, tile, direction):
-        #Find the first non empty slot
-        if direction == "up":
-            #Check top of column to tile (1, 2, TILE)
-            for gridY in range(tile.gridY).__reversed__:
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
-                    return True
+                if tile is None:
+                    count += 1
+        return count
+
+    #
+    # constructors
+    #
+
+    def __init__(self, n: int) -> None:
+        """
+        Default initializer. Instantiates all class variables for a empty
+        GameState of size n.
+        """
+        # Create original list
+        self.board = list()
+        for i in range(n):
+            # Add n empty lists to each list in list
+            self.board.append(list())
+            for _ in range(n):
+                self.board[i].append(None)
+
+        # instance vars
+        self.score = 0
+        self.n = n
+
+    @staticmethod
+    def startState(n: int, adversary: Adversary) -> GameState:
+        """
+        Create a new random start state.
+        """
+        state = GameState(n)
+        state = adversary.getPlacement(state)
+        return state
+
+    #
+    # api methods
+    #
+
+    def generateSuccessors(
+        self,
+        adversary: Adversary,
+    ) -> dict[Action, list[tuple[float, GameState]]]:
+        # TODO: implement
+        raise NotImplementedError
+
+    def move(self, action: Action, adversary: Adversary) -> GameState:
+        """
+        Generate a new GameState from a given action. New tile(s) are then
+        placed by the given adversary.
+        """
+
+        # create copy of new state
+        newState = self._copy()
+
+        # merge based on action
+        match action:
+            case Action.UP:
+                for colIdx in range(newState.n):
+                    # generate col
+                    col = [
+                        newState.board[rowIdx][colIdx] for rowIdx in range(newState.n)
+                    ]
+
+                    # merge
+                    col, addScore = GameState._mergeLine(col)
+
+                    # write back to grid
+                    newState.score += addScore
+                    for rowIdx in range(newState.n):
+                        newState.board[rowIdx][colIdx] = col[colIdx]
+            case Action.DOWN:
+                for colIdx in range(self.n):
+                    # generate reverse col
+                    col = [
+                        newState.board[rowIdx][colIdx] for rowIdx in range(newState.n)
+                    ]
+                    col.reverse()
+
+                    # merge and rereverse
+                    col, addScore = GameState._mergeLine(col)
+                    col.reverse()
+
+                    # write back to grid
+                    newState.score += addScore
+                    for rowIdx in range(newState.n):
+                        newState.board[rowIdx][colIdx] = col[rowIdx]
+            case Action.LEFT:
+                for rowIdx in range(self.n):
+                    # generate row
+                    row = [
+                        newState.board[rowIdx][colIdx] for colIdx in range(newState.n)
+                    ]
+
+                    # merge
+                    row, addScore = GameState._mergeLine(row)
+
+                    # write back to grid
+                    newState.score += addScore
+                    for colIdx in range(newState.n):
+                        newState.board[rowIdx][colIdx] = row[colIdx]
+            case Action.RIGHT:
+                for rowIdx in range(self.n):
+                    # generate reverse row
+                    row = [
+                        newState.board[rowIdx][colIdx] for colIdx in range(newState.n)
+                    ]
+                    row.reverse()
+
+                    # merge and rereverse
+                    row, addScore = GameState._mergeLine(row)
+                    row.reverse()
+
+                    # write back to grid
+                    newState.score += addScore
+                    for colIdx in range(newState.n):
+                        newState.board[rowIdx][colIdx] = row[colIdx]
+
+        # update locations
+        for rowIdx in range(newState.n):
+            for colIdx in range(newState.n):
+                # get tile
+                tile = newState.board[rowIdx][colIdx]
+                if tile is None:
+                    continue
+
+                # update tile
+                tile.location = (rowIdx, colIdx)
+
+        # add tile
+        newState = adversary.getPlacement(newState)
+        newState
+        return newState
+
+    def isLoss(self) -> bool:
+        if self.emptySpaces == 0:
             return False
-        elif direction == "down":
-            #Check tile + 1 to bottom of column (Tile, 3, 4)
-            for gridY in range(tile.gridY + 1, len(self.board[tile.gridX])):
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
-                    return True
-            return False
-            
-        elif direction == "left":
-            #Check leftmost column to TILE (1, 2, Tile)
-            for gridY in range(tile.gridX).__reversed__:
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
-                    return True
-            return False
-        elif direction == "right":
-            #Check TILE + 1 to end of row (Tile, 3, 4)
-            for gridY in range(tile.gridX + 1, len(self.board[tile.gridY])):
-                tileToCheck = self.board[tile.gridX][gridY]
-                if tileToCheck is not None and tileToCheck.value == tile.value: 
-                    return True
-            return False
-        
-    
-    def isLoss():
-        #if no more possible moves?
-        #need to show that the entire gamestate board is filled, with no possible moves
-        for direction in ["up", "down", "left", "right"]:
-            #iterate through each direction. if there is NOT a conflict with any direction, then there is a legal move
-            if checkConflict(self, tile, direction) == True:
+
+        for action in self.getLegalActions():
+            # TODO Get real adversary or add movement logic here
+            newState = self.move(action, DummyAdversary())
+            if newState != self:
                 return False
-        #otherwise, if there is a conflict with each direction, then there is not a legal move
-        #then, you return loss = true
+
         return True
-        #pass
-        
-    def isWin():
-        pass
-    
-    
+
+    def getLegalActions(self) -> list[Action]:
+        raise NotImplementedError
+
+    def printGameState(self) -> None:
+        print("Current score = " + str(self.score))
+        for row in self.board:
+            for tile in row:
+                print(" | " + str(tile) + " | ")
+            print("\n")
+
+    def __eq__(self, state: object) -> bool:
+
+        if not isinstance(state, GameState):
+            raise TypeError("Can only compare GameStates to other GameStates")
+
+        if self.score != state.score:
+            return False
+
+        for rowIndex, row in enumerate(self.board):
+            for colIndex, tile in enumerate(row):
+                if tile != state.board[rowIndex][colIndex]:
+                    return False
+
+        return True
+
+    #
+    # helper methods
+    #
+
+    def _copy(self) -> GameState:
+        """
+        Create another instance of GameState from this GameState.
+        """
+        return deepcopy(self)
+
+    #
+    # helper functions
+    #
+
+    @staticmethod
+    def _mergeLine(line: list[Tile | None]) -> tuple[list[Tile | None], int]:
+        """
+        Merge tiles in line and return the new line and the amount of score
+        gained.
+        """
+
+        # derive values
+        n = len(line)
+        score = 0
+
+        # remove empty blocks
+        line = [tile for tile in line if tile is not None]
+
+        # merge adjacents
+        for i in range(1, len(line)):
+            if line[i - 1] is not None and line[i - 1].value == line[i].value:  # type: ignore
+                newTile: Tile = deepcopy(line[i - 1])  # type: ignore
+                newTile.value *= 2
+                newTile.location = None
+                line[i - 1] = newTile
+                line[i] = None
+                score += newTile.value
+
+        # remove empty blocks again
+        line = [tile for tile in line if tile is not None]
+
+        # pad with empties
+        for _ in range(n - len(line)):
+            line.append(None)
+
+        return (line, score)
