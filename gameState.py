@@ -11,15 +11,63 @@ from dataclasses import dataclass
 from tile import Tile
 
 
+'''- Add an adversary = (YG)
+    - Scores positions for new tiles
+    - Picks randomly from the top `k` places'''
+
+'''
+
+'''
 @dataclass
-class Adversary(ABC):
+class Adversary(Adversary):
     @abstractmethod
+    #float = "score" of tile
+
     def generateSuccessors(self, state: GameState) -> list[tuple[float, GameState]]:
-        raise NotImplementedError
+        successors = []
+        
+        # get all empty cells
+        emptyCells = [
+            (rowIdx, colIdx)
+            for rowIdx in range(state.n)
+            for colIdx in range(state.n)
+            if state.board[rowIdx][colIdx] is None
+        ]
+        if len(emptyCells) == 0:
+            return state
+        return emptyCells
+
+        # raise NotImplementedError
 
     @abstractmethod
     def getPlacement(self, state: GameState) -> GameState:
-        raise NotImplementedError
+        #stolen from han
+        # create copy of state
+        # state = deepcopy(state)
+
+        # # get all empty cells
+        # emptyCells = [
+        #     (rowIdx, colIdx)
+        #     for rowIdx in range(state.n)
+        #     for colIdx in range(state.n)
+        #     if state.board[rowIdx][colIdx] is None
+        # ]
+
+        # # skip adding if board is full
+        # if len(emptyCells) == 0:
+        #     return state
+
+        # # pick random cell, value
+        # rowIdx, colIdx = random.choice(emptyCells)
+        # tileValueChoices = [2,4]
+        # tileValue = random.choice(tileValueChoices)
+
+        # # place a block from the domain here
+        # state.board[rowIdx][colIdx] = Tile(value=tileValue, row=rowIdx, col=colIdx)
+
+        # return state
+
+        #raise NotImplementedError
 
 
 @dataclass
