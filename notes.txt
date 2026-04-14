@@ -1,0 +1,38 @@
+adversary:
+"dumb" adversary
+- call evalfunction (does nothing)
+    from evalfunc from all possible states, pick randomly from top k
+    
+
+
+abstract tile
+-> bomb tile inherits from tile
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
