@@ -127,14 +127,14 @@ class GameState:
     # api methods
     #
 
-    def generateSuccessors(self,adversary: Adversary) -> dict[Action, list[tuple[float, GameState]]]:        
+    def generateSuccessors(self,adversary: Adversary) -> dict[Action, list[tuple[float, GameState]]]:
         successors = {}
-        
+
         #Loop through each legal action
         for action in self.getLegalActions():
             #Create a new state without placing a tile
             newState = self._copy()
-            
+
             # merge based on action
             match action:
                 case Action.UP:
@@ -200,10 +200,10 @@ class GameState:
 
                     # update tile
                     tile.location = (rowIdx, colIdx)
-            
-            
+
+
             successors[action] = adversary.generateSuccessors(newState)
-        
+
         #After creating distributions for each action, return
         return successors
 
@@ -231,7 +231,7 @@ class GameState:
                     # write back to grid
                     newState.score += addScore
                     for rowIdx in range(newState.n):
-                        newState.board[rowIdx][colIdx] = col[colIdx]
+                        newState.board[rowIdx][colIdx] = col[rowIdx]
             case Action.DOWN:
                 for colIdx in range(self.n):
                     # generate reverse col
@@ -293,10 +293,10 @@ class GameState:
         # add tile
         newState = adversary.getPlacement(newState)
         newState
-        
+
         print("GameState = ")
         newState.printGameState()
-        
+
         return newState
 
     def isLoss(self) -> bool:
@@ -344,7 +344,7 @@ class GameState:
         Create another instance of GameState from this GameState.
         """
         return deepcopy(self)
-    
+
     @staticmethod
     def _mergeLine(line: list[Tile | None]) -> tuple[list[Tile | None], int]:
         """
