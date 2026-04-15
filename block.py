@@ -279,6 +279,7 @@ class App:
     def run(self) -> None:
         # game loop
         while self.state.running:
+            
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
@@ -291,7 +292,10 @@ class App:
                     if action is not None:
                         #yg changed here help debug print something balc yg
                         # self.state.game = self.state.game.move(action, DummyAdversary())
-                        self.state.game = self.state.game.move(action, Adversary())
+                        self.state.game = self.state.game.takeTurn(action, Adversary())
+                        if self.state.game.isLoss():
+                            print("You lost")
+                            #break
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)

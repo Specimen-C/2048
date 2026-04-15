@@ -76,9 +76,12 @@ class Tile:
         return "Tile Location = " + str(self.location) + ": " + str(self.value)
 
     def __eq__(self, tile: object) -> bool:
+        if tile is None:
+            return False
         # ensure input in another tile
         if not isinstance(tile, Tile):
-            raise TypeError("Can only compare tiles to other tiles!")
+            #return False
+            raise TypeError("You tried to compare a " + str(type(tile)) + ". Can only compare tiles to other tiles!")
 
         # check values
         if tile.location != self.location:
