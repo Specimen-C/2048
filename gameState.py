@@ -156,8 +156,9 @@ class Adversary(ABC):
                     returnList.append((0, state))
                 else:
                     tile = Tile(value, rowIdx, colIdx)
-                    state.board[rowIdx][colIdx] = Tile(value=value, row=rowIdx, col=colIdx)
-                    returnList.append((options[tile.row, tile.col], state))
+                    stateCopy = deepcopy(state)
+                    stateCopy.board[rowIdx][colIdx] = Tile(value=value, row=rowIdx, col=colIdx)
+                    returnList.append((options[tile.row, tile.col], stateCopy))
         # print(returnList)
         return returnList
         #     if (lowest > options[cell]):
