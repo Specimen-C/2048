@@ -146,6 +146,7 @@ class Adversary(ABC):
         for cell in emptyCells:
             tile = Tile(value, cell[0], cell[1])
             options[(cell[0], cell[1])] = (self.checkMerge(state, tile) + (self.clutterFactor(state, tile) / (state.n*state.n)))
+            print("score?",  options[(cell[0], cell[1])])
         
         returnList = []
 
@@ -208,10 +209,10 @@ class Adversary(ABC):
         # print(choices)
         # print("length?", len(choices))
         for choice in choices:
-            print("inside cforst c/hoice ")
-            print("choice[0]", choice[0])
+            # print("inside cforst c/hoice ")
+            # print("choice[0]", choice[0])
             if choice[0] != 0 or choice[0] != 0.0:
-                print("inside choice ")
+                # print("inside choice ")
                 actualChoices.append(choice)
         # # place a block from the domain here
         # print(choices[1][1])
@@ -222,7 +223,8 @@ class Adversary(ABC):
         # return state #choices[1][1]
         if len(actualChoices) == 0:
             return choices[0][1]
-        return actualChoices[0][1]
+        rand = random.randrange(len(actualChoices))
+        return actualChoices[rand][1]
 
 
 
