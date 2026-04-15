@@ -11,62 +11,11 @@ from dataclasses import dataclass
 from tile import Tile
 
 
-'''@dataclass
-class Adversary(ABC):
-    @abstractmethod
-    #float = "score" of tile
-
-    def generateSuccessors(self, state: GameState) -> list[tuple[float, GameState]]:
-        successors = []
-        
-        # get all empty cells
-        emptyCells = [
-            (rowIdx, colIdx)
-            for rowIdx in range(state.n)
-            for colIdx in range(state.n)
-            if state.board[rowIdx][colIdx] is None
-        ]
-        if len(emptyCells) == 0:
-            return state
-        return emptyCells
-
-        # raise NotImplementedError
-
-    @abstractmethod
-    def getPlacement(self, state: GameState) -> GameState:
-        #stolen from han
-        # create copy of state
-        # state = deepcopy(state)
-
-        # # get all empty cells
-        # emptyCells = [
-        #     (rowIdx, colIdx)
-        #     for rowIdx in range(state.n)
-        #     for colIdx in range(state.n)
-        #     if state.board[rowIdx][colIdx] is None
-        # ]
-
-        # # skip adding if board is full
-        # if len(emptyCells) == 0:
-        #     return state
-
-        # # pick random cell, value
-        # rowIdx, colIdx = random.choice(emptyCells)
-        # tileValueChoices = [2,4]
-        # tileValue = random.choice(tileValueChoices)
-
-        # # place a block from the domain here
-        # state.board[rowIdx][colIdx] = Tile(value=tileValue, row=rowIdx, col=colIdx)
-
-        # return state
-
-        raise NotImplementedError'''
 @dataclass
 class Adversary(ABC):
-    # @abstractmethod
-    #float = "score" of tile
-    #list of probabilities and 
+    # helper method for finding all empty tiles
     def getEmpty(self, state:GameState) -> list:
+        #iterate to find all board spaces are None
         emptyCells = [
             (rowIdx, colIdx)
             for rowIdx in range(state.n)
@@ -79,10 +28,9 @@ class Adversary(ABC):
             return []
         return emptyCells
 
-    def evaluateState(self, state: GameState):
-        options = getEmpty(self, state)
 
-    #checks if same tile exists in 
+    #helper method: checks if same value tile exists in the same row/column
+    #if yes, then increment numConflicts 
     def checkMerge(self, state:GameState, tile: Tile) -> int:
         value = tile.value
         location = tile.location
@@ -103,12 +51,14 @@ class Adversary(ABC):
 
         return numConflicts
 
+    #helper method for manhattan distance in clutterFactor
     def manhattanDistance(self, xy1, xy2):
         "Returns the Manhattan distance between points xy1 and xy2"
         return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
 
     #returns sum of manhattan distance to every other tile on board
-    #iterate through all tile spaces on board. if not none, then find manhattan distance and sum to total
+    #iterate through all tile spaces on board. 
+    # if the board space is not None, then find manhattan distance and add it to the total
     def clutterFactor(self, state:GameState, tile:Tile) -> int:
         location = tile.location
         clutterSum = 0
@@ -119,22 +69,12 @@ class Adversary(ABC):
         return clutterSum
 
 
-    #list of tuples:(probabilities, states)
+    #returns list of tuples:(probabilities, states)
+    #probabilities are calculated through the clutterFactor and checkMerge factors
     def generateSuccessors(self, state: GameState , value:int ) -> list[tuple[float, GameState]]:
-        state = deepcopy(state)
-
-        #stolen from han
-        # create copy of state
-        # state = deepcopy(state)
         
-
-        # get all empty cells
-        emptyCells = [
-            (rowIdx, colIdx)
-            for rowIdx in range(state.n)
-            for colIdx in range(state.n)
-            if state.board[rowIdx][colIdx] is None
-        ]
+        state = deepcopy(state)
+        emptyCells = self.getEmpty(state)
         options = {}
         lowest = -1
         clutterOptions = []
@@ -143,13 +83,21 @@ class Adversary(ABC):
         if len(emptyCells) == 0:
             return state
 
+        #for each empty cell, calculate the "probability" to place a tile in that space
+        #current weighting is through 1 - (number of merge conflicts + clutterfactor/n)
+        #this can be changed very easily
         for cell in emptyCells:
             tile = Tile(value, cell[0], cell[1])
-            options[(cell[0], cell[1])] = (self.checkMerge(state, tile) + (self.clutterFactor(state, tile) / (state.n*state.n)))
+            # options[(cell[0], cell[1])] = (self.checkMerge(state, tile) + (self.clutterFactor(state, tile) / (state.n*state.n)))
+            options[(cell[0], cell[1])] = 1 - (self.checkMerge(state, tile)/ (state.n) + (self.clutterFactor(state, tile) / (state.n*state.n)))
+
             print("score?",  options[(cell[0], cell[1])])
         
         returnList = []
 
+        #for every space in board:
+        #if the space DOES contain a tile, then we cannot place a new tile there and pair it with a '0' probability
+        #else, add a tile to the empty space, along with the probability calculated above
         for rowIdx in range(state.n):
             for colIdx in range(state.n):
                 if state.board[rowIdx][colIdx] is not None:
@@ -159,73 +107,48 @@ class Adversary(ABC):
                     tile = Tile(value, rowIdx, colIdx)
                     stateCopy = deepcopy(state)
                     stateCopy.board[rowIdx][colIdx] = Tile(value=value, row=rowIdx, col=colIdx)
+                    #using values stored in a dictionary from the empty cell probabilities calculations
                     returnList.append((options[tile.row, tile.col], stateCopy))
         # print(returnList)
         return returnList
-        #     if (lowest > options[cell]):
-        #         lowest = options[cell]
-        # print(options)
-        # for cell in emptyCells:
-        #     if options[cell] == lowest:
-        #         clutterOptions.append(cell)
 
-        
-        #what makes a choice to place a tile?
-        #evaluate the current score
-        #evaluate the empty spaces and where the most tiles are clustered?
-        # raise NotImplementedError
 
-    # @abstractmethod
+    # method that decides where to place the tile based on all states generated by the successors method
     def getPlacement(self, state: GameState) -> GameState:
-        #stolen from han
-        #this is what is actually called to place a tile in the gameboard
-        # create copy of state
         state = deepcopy(state)
-
-        # get all empty cells
-        emptyCells = [
-            (rowIdx, colIdx)
-            for rowIdx in range(state.n)
-            for colIdx in range(state.n)
-            if state.board[rowIdx][colIdx] is None
-        ]
+        emptyCells = self.getEmpty(state)
 
         # skip adding if board is full
         if len(emptyCells) == 0:
             return state
 
-        # pick random cell, value
-        rowIdx, colIdx = random.choice(emptyCells)
-
-        #THIS GETS REPLACED WITH THE "TOP" K CHOICES FROM GENERATESUCCESSORS?
-        tileValueChoices = [2,4]
-
-        #tileValue = random.choice(tileValueChoices)
         choices = []
         actualChoices = []
-        # for i in range(len(tileValueChoices)):
-        #     choices.append(self.generateSuccessors(state,tileValueChoices[i] ))
+        #choices of tile values to place in the game
+        tileValueChoices = [2,4]
+        #generates successors for each option. this can be changed with the length of tileValueChoices
         choices = self.generateSuccessors(state,tileValueChoices[0] )
-        # print(choices)
-        # print("length?", len(choices))
-        for choice in choices:
-            # print("inside cforst c/hoice ")
-            # print("choice[0]", choice[0])
-            if choice[0] != 0 or choice[0] != 0.0:
-                # print("inside choice ")
-                actualChoices.append(choice)
-        # # place a block from the domain here
-        # print(choices[1][1])
-        # print("huh", choices[1])
+        choices.extend(self.generateSuccessors(state,tileValueChoices[1] ))
 
-        # state.board[actualChoices[1].][choices[1][1]] = Tile(value=tileValueChoices[0], row=choices[1][0], col=choices[1][1])
-        # retValue = actualChoices[0]
-        # return state #choices[1][1]
+        #essentially filters out the zero/lower ranked scores
+        for choice in choices:
+            #if the probability in the gamestate to place tile is not zero
+            if choice[0] != 0 or choice[0] != 0.0:
+                #if probability score is greater than 0, then append it to the list of actual options to choose placement
+                #if choice[0] > 0:
+                actualChoices.append(choice)
+
+
+        #if all choices are empty (essentially full board)
         if len(actualChoices) == 0:
             return choices[0][1]
-        rand = random.randrange(len(actualChoices))
-        return actualChoices[rand][1]
 
+        else:
+            #sort the options
+            temp = sorted(actualChoices, key=lambda x: x[0], reverse=True) #actualChoices.sort(key=lambda x: x[0], reverse=True) #[:(len(actualChoices)/2)]
+            #select random from the top k = actual choices /2
+            rand = random.randrange(0, int(len(temp)/2))
+            return temp[rand][1]
 
 
 # @dataclass(init=False)
