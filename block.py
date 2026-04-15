@@ -8,7 +8,7 @@ from pygame import Clock, Font, Surface
 
 # local imports
 from action import Action
-from gameState import GameState, DummyAdversary
+from gameState import GameState , Adversary#, DummyAdversary
 from tile import Tile
 
 # types
@@ -260,7 +260,10 @@ class App:
             running=True,
             clock=pygame.time.Clock(),
             dt=0.0,
-            game=GameState.startState(cfg.BOARD_N, DummyAdversary()),
+            #YG CHANGED HERE EDIT HELP ME DEBUG
+            #game=GameState.startState(cfg.BOARD_N, DummyAdversary()),
+            game=GameState.startState(cfg.BOARD_N, Adversary()),
+
         )
 
         # window's surface
@@ -286,7 +289,9 @@ class App:
                 elif event.type == pygame.KEYDOWN:
                     action = KEYBINDS.get(event.key)
                     if action is not None:
-                        self.state.game = self.state.game.move(action, DummyAdversary())
+                        #yg changed here help debug print something balc yg
+                        # self.state.game = self.state.game.move(action, DummyAdversary())
+                        self.state.game = self.state.game.move(action, Adversary())
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
