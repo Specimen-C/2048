@@ -8,7 +8,7 @@ from pygame import Clock, Font, Surface
 
 # local imports
 from action import Action
-from gameState import GameState , Adversary#, DummyAdversary
+from gameState import GameState , Adversary
 from tile import Tile
 
 # types
@@ -279,7 +279,7 @@ class App:
     def run(self) -> None:
         # game loop
         while self.state.running:
-            
+
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
@@ -290,8 +290,6 @@ class App:
                 elif event.type == pygame.KEYDOWN:
                     action = KEYBINDS.get(event.key)
                     if action is not None:
-                        #yg changed here help debug print something balc yg
-                        # self.state.game = self.state.game.move(action, DummyAdversary())
                         self.state.game = self.state.game.takeTurn(action, Adversary())
                         if self.state.game.isLoss():
                             print("You lost")

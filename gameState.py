@@ -5,14 +5,13 @@ import random
 from copy import deepcopy
 
 # local item imports
-from abc import ABC, abstractmethod
 from action import Action
 from dataclasses import dataclass
 from tile import Tile
 
 
 @dataclass
-class Adversary(ABC):
+class Adversary:
     # helper method for finding all empty tiles
     def getEmpty(self, state:GameState) -> list:
         #iterate to find all board spaces are None
@@ -30,7 +29,7 @@ class Adversary(ABC):
 
 
     #helper method: checks if same value tile exists in the same row/column
-    #if yes, then increment numConflicts 
+    #if yes, then increment numConflicts
     def checkMerge(self, state:GameState, tile: Tile) -> int:
         value = tile.value
         location = tile.location
@@ -40,7 +39,7 @@ class Adversary(ABC):
         #check all values in same column
         for r in range(0, state.n):
             if state.board[r][tile.col] is not None :
-                
+
                 if state.board[r][tile.col].value == value and r != tile.row:
                     numConflicts+=1
 
@@ -57,7 +56,7 @@ class Adversary(ABC):
         return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
 
     #returns sum of manhattan distance to every other tile on board
-    #iterate through all tile spaces on board. 
+    #iterate through all tile spaces on board.
     # if the board space is not None, then find manhattan distance and add it to the total
     def clutterFactor(self, state:GameState, tile:Tile) -> int:
         location = tile.location
@@ -72,13 +71,13 @@ class Adversary(ABC):
     #returns list of tuples:(probabilities, states)
     #probabilities are calculated through the clutterFactor and checkMerge factors
     def generateSuccessors(self, state: GameState , value:int ) -> list[tuple[float, GameState]]:
-        
+
         state = deepcopy(state)
         emptyCells = self.getEmpty(state)
         options = {}
         lowest = -1
         clutterOptions = []
-        
+
         # skip adding if board is full
         if len(emptyCells) == 0:
             return state
@@ -92,7 +91,7 @@ class Adversary(ABC):
             options[(cell[0], cell[1])] = 1 - (self.checkMerge(state, tile)/ (state.n) + (self.clutterFactor(state, tile) / (state.n*state.n)))
 
             print("score?",  options[(cell[0], cell[1])])
-        
+
         returnList = []
 
         #for every space in board:
@@ -276,18 +275,18 @@ class GameState:
         Generate a new GameState from a given action. New tile(s) are then
         placed by the given adversary.
         """
-        
+
         newState = self._move(action)
-        
+
         if newState == self:
             return self
 
         # add tile
         newState = adversary.getPlacement(newState)
-        
+
         print("GameState = ")
         newState.printGameState()
-        
+
         return newState
 
     def isLoss(self) -> bool:
@@ -295,18 +294,18 @@ class GameState:
             return False
 
         return (len(self.getLegalActions()) == 0)
-        
+
 
     def getLegalActions(self) -> list[Action]:
         legalActions: list[Action] = []
-        
+
         for action in Action:
             print("Checking action" + str(action))
             tempState = self._move(action)
             if tempState != self:
                 legalActions.append(action)
-                
-                
+
+
         print("LegalActions = " + str(legalActions))
         return legalActions
 
@@ -413,7 +412,7 @@ class GameState:
 
         return newState
 
-    
+
     def _copy(self) -> GameState:
         """
         Create another instance of GameState from this GameState.
