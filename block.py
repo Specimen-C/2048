@@ -4,10 +4,12 @@ import pygame
 
 # item imports
 from dataclasses import dataclass
+from datetime import datetime
 from pygame import Clock, Font, Surface
 
 # local imports
 from action import Action
+from agent import Agent
 from gameState import GameState, Adversary
 from tile import Tile
 
@@ -123,6 +125,16 @@ class AppConfig:
     Height of the display.
     """
 
+    ADVERSARY: Adversary
+    """
+    Adversary which places tiles.
+    """
+
+    DEFAULT_MPS: float
+    """
+    Default number of moves per second.
+    """
+
     @staticmethod
     def new(board_n: int) -> AppConfig:
         # constants
@@ -136,6 +148,8 @@ class AppConfig:
         WINDOW_PADDING: int = 10
         WINDOW_W: int = BOARD_L + (2 * WINDOW_PADDING)
         WINDOW_H: int = BOARD_L + STATUS_H + (3 * WINDOW_PADDING)
+        ADVERSARY: Adversary = Adversary()
+        DEFAULT_MPS: float = 0.5
 
         return AppConfig(
             BOARD_N=BOARD_N,
@@ -148,6 +162,8 @@ class AppConfig:
             WINDOW_PADDING=WINDOW_PADDING,
             WINDOW_W=WINDOW_W,
             WINDOW_H=WINDOW_H,
+            ADVERSARY=ADVERSARY,
+            DEFAULT_MPS=DEFAULT_MPS,
         )
 
 
@@ -214,6 +230,41 @@ class AppState:
     The game clock.
     """
 
+    agent: Agent | None
+    """
+    The agent playing the game. `None` indicates there is no agent taking moves
+    and the keyboard inputs are enabled.
+    """
+
+    mps: float
+    """
+    Number of moves per second to perform.
+    """
+
+    time_since_move: float
+    """
+    Time since last move in seconds.
+    """
+
+    @property
+    def time_between_moves(self) -> float:
+        """
+        Ammount of time between moves with the given moves per second.
+        """
+        return 1 / self.mps
+
+    @staticmethod
+    def new(cfg: AppConfig, agent: Agent | None) -> AppState:
+        return AppState(
+            running=True,
+            dt=0.0,
+            game=GameState.startState(cfg.BOARD_N, cfg.ADVERSARY),
+            clock=pygame.time.Clock(),
+            agent=agent,
+            mps=cfg.DEFAULT_MPS,
+            time_since_move=0.0,
+        )
+
 
 @dataclass(kw_only=True)
 class App:
@@ -256,12 +307,7 @@ class App:
         )
 
         # init state
-        state = AppState(
-            running=True,
-            clock=pygame.time.Clock(),
-            dt=0.0,
-            game=GameState.startState(cfg.BOARD_N, Adversary()),
-        )
+        state = AppState.new(cfg, Agent("Joe"))
 
         # window's surface
         display_surf = pygame.display.set_mode((cfg.WINDOW_W, cfg.WINDOW_H))
@@ -279,17 +325,42 @@ class App:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
+            # update time since move
+            self.state.time_since_move += self.state.dt
+
+            # if there is an agent and time since move elapsed, move
+            if self.state.agent is not None and self.state.time_since_move > self.state.time_between_moves:
+                # take action
+                agent_action = self.state.agent.getAction(self.state.game, self.cfg.ADVERSARY)
+                self.state.game = self.state.game.takeTurn(agent_action, self.cfg.ADVERSARY)
+                self.state.time_since_move = 0.0
+
             # process events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state.running = False
                 elif event.type == pygame.KEYDOWN:
-                    action = KEYBINDS.get(event.key)
-                    if action is not None:
-                        self.state.game = self.state.game.takeTurn(action, Adversary())
-                        if self.state.game.isLoss():
-                            print("You lost")
-                            # break
+                    user_action = KEYBINDS.get(event.key)
+                    if self.state.agent is None and user_action is not None:
+                        self.state.game = self.state.game.takeTurn(user_action, self.cfg.ADVERSARY)
+
+            # deal with loss
+            if self.state.game.isLoss():
+                if self.state.agent is None:
+                    print(f"You lost! score: {self.state.game.score}")
+                else:
+                    # info
+                    agent = self.state.agent
+                    agent.death = datetime.now()
+                    lifespan = agent.death - agent.born
+
+                    # print
+                    print("---")
+                    print(f"{agent.agent}")
+                    print(f"{agent.born.strftime("%H:%M:%S")} - {agent.death.strftime("%H:%M:%S")}")
+                    print(f"{(lifespan)}")
+                    print(f"{agent.gravestone}")
+                    print("---")
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
