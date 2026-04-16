@@ -17,11 +17,11 @@ class Agent:
     def setRandom(self):
         self.agent = "Random"
     
-    def __init__(self, agent: str, wtfisagravestone: str, birth: datetime, death: datetime):
+    def __init__(self, agent: str):
         self.agent = agent                  #sting
-        self.gravestone = wtfisagravestone  #a string
-        self.born = birth                   #datetime obj
-        self.death = death                  #datetime obj
+        self.gravestone = None  #a string
+        self.born = datetime.now()                   #datetime obj
+        self.death = None                  #datetime obj
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
