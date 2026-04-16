@@ -10,6 +10,7 @@ from pygame import Clock, Font, Surface
 from action import Action
 from gameState import GameState, Adversary
 from tile import Tile
+from agent import Agent
 
 # types
 type ColorTuple = tuple[int, int, int]

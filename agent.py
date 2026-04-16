@@ -12,16 +12,18 @@ class Agent:
     gravestone: str
     born: datetime
     death: datetime
-
+    mode: str
+    
     #sets the agent to a randomly moving agent
     def setRandom(self):
-        self.agent = "Random"
-
-    def __init__(self, agent: str):
-        self.agent = agent                  #sting
-        self.gravestone = None  #a string
-        self.born = datetime.now()                   #datetime obj
-        self.death = None                  #datetime obj
+        self.mode = "Random"
+    
+    def __init__(self, agentName: str):
+        self.agent = agentName              #string
+        self.gravestone = None              #string
+        self.born = datetime.now()          #datetime obj
+        self.death = None                   #datetime obj
+        self.mode = "Random"                #default make the agent be random
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -127,10 +129,10 @@ class Agent:
         self.gravestone = message
 
     def setAgent(self, agentType: str):
-        self.agent = agentType
-
+        self.mode = agentType
+        
     #empty body but method idea outlined for monte-carlo tree search
-    def UCT():
+    def UCT(self, gameState: gameState):
         import math         #for sqrt and logs
 
 
