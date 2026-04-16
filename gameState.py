@@ -265,7 +265,7 @@ class GameState:
             newState = newState._move(action)
 
 
-            successors[action] = adversary.generateSuccessors(newState)
+            successors[action] = adversary.generateSuccessors(newState, 2)
 
         #After creating distributions for each action, return
         return successors
@@ -317,6 +317,8 @@ class GameState:
             print('')
 
     def __eq__(self, state: object) -> bool:
+        if state is None:
+            return False
 
         if not isinstance(state, GameState):
             raise TypeError("Can only compare GameStates to other GameStates")
