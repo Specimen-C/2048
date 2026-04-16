@@ -8,7 +8,7 @@ from pygame import Clock, Font, Surface
 
 # local imports
 from action import Action
-from gameState import GameState , Adversary
+from gameState import GameState, Adversary
 from tile import Tile
 
 # types
@@ -260,10 +260,7 @@ class App:
             running=True,
             clock=pygame.time.Clock(),
             dt=0.0,
-            #YG CHANGED HERE EDIT HELP ME DEBUG
-            #game=GameState.startState(cfg.BOARD_N, DummyAdversary()),
             game=GameState.startState(cfg.BOARD_N, Adversary()),
-
         )
 
         # window's surface
@@ -279,7 +276,6 @@ class App:
     def run(self) -> None:
         # game loop
         while self.state.running:
-
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
@@ -293,7 +289,7 @@ class App:
                         self.state.game = self.state.game.takeTurn(action, Adversary())
                         if self.state.game.isLoss():
                             print("You lost")
-                            #break
+                            # break
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
