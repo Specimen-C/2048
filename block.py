@@ -275,6 +275,14 @@ class App:
         )
 
     def run(self) -> None:
+        
+        #instantiate an agent instance (Random for now):
+        agent = Agent("")
+        agent.setRandom()
+        #agent.setAgent("MonteCarlo")
+        moveTimer = 0.0
+        moveDelay = 2.0
+        
         # game loop
         while self.state.running:
             # update time delta
@@ -284,8 +292,17 @@ class App:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state.running = False
-                elif event.type == pygame.KEYDOWN:
-                    action = KEYBINDS.get(event.key)
+                    
+            #play game based on action from agent
+            if (not self.state.game.isLoss()):
+                moveTimer += self.state.dt
+
+                if (moveTimer >= moveDelay):
+                    moveTimer = 0.0
+                    action = agent.getAction(self.state.game, Adversary())
+                    
+                    print("CHOSEN ACTION: ", action)
+                    
                     if action is not None:
                         self.state.game = self.state.game.takeTurn(action, Adversary())
                         if self.state.game.isLoss():
