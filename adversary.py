@@ -1,5 +1,5 @@
 from action import Action 
-from agent import Agent
+# from agent import Agent
 from gameState import GameState
 from tile import Tile
 from abc import ABC, abstractmethod

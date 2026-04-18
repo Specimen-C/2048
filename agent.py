@@ -146,9 +146,9 @@ class Agent:
     #Clarifications:
         """
         s = current state.
-        d = remaining depth or horizon (so the recursion does not go on forever, and so the planner can do finite-horizon search).
+        d = remaining depth or horizon (so recursion doesnt go on forever; allows for finite-horizon search).
         pi_0 = default policy used during rollout (random or some heuristic policy)
-        A(s) = action set (legal actions available from state s)
+        A(s) = legal action set from state s 
         T = set of states already added to the search tree.
         N(s, a) = visit count for taking action a from state s.
         Q(s, a) = current estimated value of taking action a from state s.
@@ -165,67 +165,77 @@ class Agent:
         
     def UCT(self, gameState: gameState, adversary: Adversary):
         import math         #for sqrt and logs
+        
+        #general stuff we need for MCTS:
         T = set()           #T states in search tree; for rollout vs continuous simualtion
-        Q = {}
-        N = {}
+        Q = {}              #Q(s, a): estimated return/value for taking that action from that state; running average of all sampled q-values seen for that (s, a)
+        N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
         c = 1.5             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
 
+        #!!!!!!  Monte Carlo Tree Method helpers:
+        def A(s: gameState):
+            return s.getLegalActions()
+        
+        #explore randomly (choose moves to simulate at random for MCTS)
+        def pi_0(s: gameState):
+            actions = A(s)
+            if (len(actions) == 0):
+                return None
+            return random.choice(actions)
+                
+        #Debugs for Monte Carlo Process
+        def debugMCT(self):
+            pass
+
+        """
+        function selectAction(s, d):
+            loop
+                Simulate(s, d, pi_0)
+            return argmax_a Q(s, a)         #yeah
+        """
+
+        def selectActions(self, state: gameState, depth: int):
+            while(True):
+                Simulate(s, d, )
 
 
 
-    #!!!!!!  Monte Carlo Tree Method helpers:
-    
-    #Debugs for Monte Carlo Process
-    def debugMCT(self):
-        pass
+        """
+        function Simulate(s, d, pi_0):
+            if (d == 0):
+                return 0
+            if (s not in T):
+                for a in A(s)
+                    (N(s, a), Q(s, a)) = (N_0(s, a), Q_0(s, a))
+                T = T union {s}
+                return rollout(s, d, pi_0)
 
-    """
-    function selectAction(s, d):
-        loop
-            Simulate(s, d, pi_0)
-        return argmax_a Q(s, a)         #yeah
-    """
+                if a in A(s):
+                    a = argmax_a (Q(s, a) + (c * math.sqrt( (math.log( N(s)) / N(s, a) ) )
+                (s', r) ~ G(s, a)
+                q = r + y*Simulate(s', d - 1, pi_0)
+                N(s, a) = N(s, a) + 1
+                Q(s, a) = Q(s, a) + (q - Q(s, a) / N(s, a))
 
-    def selectActions(self, state: gameState, depth: int):
-        while(True):
-            Simulate(s, d, )
+            return q
+        """
 
+        def Simulate(self, state: gameState, depth: int, pi_0):
+            pass
+        
+        
+        """
+        function Rollout(s, d, pi_0):
+            if d == 0:
+                return 0
 
-
-    """
-    function Simulate(s, d, pi_0):
-        if (d == 0):
-            return 0
-        if (s not in T):
-            for a in A(s)
-                (N(s, a), Q(s, a)) = (N_0(s, a), Q_0(s, a))
-            T = T union {s}
-            return rollout(s, d, pi_0)
-
-            if a in A(s):
-                a = argmax_a (Q(s, a) + (c * math.sqrt( (math.log( N(s)) / N(s, a) ) )
+            a ~ pi_0(s)
             (s', r) ~ G(s, a)
-            q = r + y*Simulate(s', d - 1, pi_0)
-            N(s, a) = N(s, a) + 1
-            Q(s, a) = Q(s, a) + (q - Q(s, a) / N(s, a))
-
-        return q
-    """
-
-    def Simulate(self, state: gameState, depth: int, pi_0):
-        pass
-    
-    
-    """
-    function Rollout(s, d, pi_0):
-        if d == 0:
-            return 0
-
-        a ~ pi_0(s)
-        (s', r) ~ G(s, a)
-        return r + y * Rollout(s', d - 1, pi_0)
-    """
-    #@returns a number, unsure if float or int
-    def Rollout(self, state: gameState, depth: int, pi_0):
-        pass
+            return r + y * Rollout(s', d - 1, pi_0)
+        """
+        #@returns a number, unsure if float or int
+        def Rollout(self, state: gameState, depth: int, pi_0):
+            pass
+        
+        return selectActions(gameState, self.depth)
