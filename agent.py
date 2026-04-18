@@ -13,6 +13,7 @@ class Agent:
     born: datetime
     death: datetime
     mode: str
+    depth: int
     
     #sets the agent to a randomly moving agent
     def setRandom(self):
@@ -24,6 +25,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
+        self.depth = 10                     #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -130,6 +132,9 @@ class Agent:
 
     def setAgent(self, agentType: str):
         self.mode = agentType
+        
+    def setDepth(self, d: int):
+        self.depth = d
         
     #empty body but method idea outlined for monte-carlo tree search
     def UCT(self, gameState: gameState):
