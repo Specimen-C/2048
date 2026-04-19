@@ -279,7 +279,7 @@ class App:
         #instantiate an agent instance (Random for now):
         agent = Agent("")
         agent.setRandom()
-        #agent.setAgent("MonteCarlo")
+        agent.setAgent("MonteCarlo")
         moveTimer = 0.0
         moveDelay = 2.0
         

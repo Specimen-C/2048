@@ -156,7 +156,8 @@ class Agent:
             the sum of N(s, a) over all actions from s.
         c is the exploration constant in the UCB/UCT formula.
         G(s, a) is the generative model or simulator:
-            given a state and action, it produces a next state and reward. s′ is the next state.
+            given a state and action, it produces a next state and reward. 
+        s′ is the next state.
         r is the immediate reward.
         The symbol ~ means “sampled from.”
             So when it says (s', r) ~ G(s, a), it means the simulator samples a transition and reward from that state-action pair.
@@ -172,20 +173,57 @@ class Agent:
         N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
         c = 1.5             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
+        d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
         def A(s: gameState):
+            print("Legal Actions: ", s.getLegalActions())
             return s.getLegalActions()
         
         #explore randomly (choose moves to simulate at random for MCTS)
         def pi_0(s: gameState):
             actions = A(s)
+            print("ACTIONS: ", actions)
             if (len(actions) == 0):
                 return None
             return random.choice(actions)
+        
+        # N(s, a) = visit count for taking action a from state s (for all actions a).
+        def N_s(s: gameState):
+            tot = 0
+            for a in A(s):
+                tot += N.get((s, a), 0)       #default 0
+            return tot
+        
+        
+        # take the current state and one chosen action, 
+        # look up that action inside s.generateSuccessors(adversary), 
+        # sample one successor according to the probabilities, and 
+        # return (s_prime, r).
+        def G(s: gameState, a: Action):
+            actions = s.generateSuccessors(adversary)
+            actionStates = actions[a]           #list of tuples of (float, gameState)s
+            
+            #the prob selected
+            prob = random.uniform(0, 1)
+            original_score = s.score
+            counter = 0.0       #ramping counter for which bucket based on dist
+            newS = actionStates[-1][1]         #s'; default is just the LAST gameState (maybe 1 is never reached for ex)
+            
+            for state in actionStates:
+                curProb = state[0]
+                counter += curProb
+                
+                #met the right "bucket"
+                if (prob <= counter):
+                    newS = state[1]
+                    break
+            
+            reward = (newS.score - original_score)      #might change later but for now just score delta
+            return (newS, reward)
                 
         #Debugs for Monte Carlo Process
-        def debugMCT(self):
+        def debugMCT():
             pass
 
         """
@@ -195,10 +233,9 @@ class Agent:
             return argmax_a Q(s, a)         #yeah
         """
 
-        def selectActions(self, state: gameState, depth: int):
+        def selectActions(state: gameState, depth: int):
             while(True):
-                Simulate(s, d, )
-
+                break
 
 
         """
@@ -211,18 +248,38 @@ class Agent:
                 T = T union {s}
                 return rollout(s, d, pi_0)
 
-                if a in A(s):
-                    a = argmax_a (Q(s, a) + (c * math.sqrt( (math.log( N(s)) / N(s, a) ) )
-                (s', r) ~ G(s, a)
-                q = r + y*Simulate(s', d - 1, pi_0)
-                N(s, a) = N(s, a) + 1
-                Q(s, a) = Q(s, a) + (q - Q(s, a) / N(s, a))
+            if a in A(s):
+                a = argmax_a (Q(s, a) + (c * math.sqrt( (math.log( N(s)) / N(s, a) ) )
+            (s', r) ~ G(s, a)
+            q = r + y*Simulate(s', d - 1, pi_0)
+            N(s, a) = N(s, a) + 1
+            Q(s, a) = Q(s, a) + (q - Q(s, a) / N(s, a))
 
             return q
         """
 
-        def Simulate(self, state: gameState, depth: int, pi_0):
-            pass
+        def Simulate(state: gameState, depth: int, pi_0):
+            if (depth == 0):
+                return 0
+            
+            if (state not in T):
+                for a in A(state):
+                    #initialize tables for all actions for that state not in the visited tree
+                    N[(state, a)] = 0
+                    Q[(state, a)] = 0.0
+                    
+                T = T.union(state)
+                return Rollout(state, depth, pi_0)
+            
+            a = None 
+            bestMCTS = -9999999
+            
+            for a in A(state):
+                pass 
+            
+            a = r + gamma*Simulate(newState, depth-1, pi_0)
+            
+            return q
         
         
         """
@@ -235,7 +292,19 @@ class Agent:
             return r + y * Rollout(s', d - 1, pi_0)
         """
         #@returns a number, unsure if float or int
-        def Rollout(self, state: gameState, depth: int, pi_0):
-            pass
+        def Rollout(state: gameState, depth: int, pi_0):
+            if depth == 0:
+                return 0
+            
+            #sample a random legal action (from current exploration algo)
+            a = pi_0(state)
+            
+            #if there are no states, it's the same as hittign the depth limit
+            if (a == None):
+                return 0
+            
+            #continue rolling out
+            (newS, r) = G(state, a)
+            return r + gamma * Rollout(newS, depth - 1, pi_0)
         
         return selectActions(gameState, self.depth)
