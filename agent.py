@@ -22,7 +22,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
-        self.depth = 10                     #default depth is 10
+        self.depth = 20                     #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -172,7 +172,7 @@ class Agent:
         Q = {}              #Q(s, a): estimated return/value for taking that action from that state; running average of all sampled q-values seen for that (s, a)
         N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
-        c = 1.5             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
+        c = 1.1             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
         d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
@@ -192,9 +192,22 @@ class Agent:
         def N_s(s: gameState):
             tot = 0
             for a in A(s):
-                tot += N.get((s, a), 0)       #default 0
+                key = stateKey(s)
+                tot += N.get((key, a), 0)       #default 0
             return tot
         
+        #makes a state hashable 
+        def stateKey(s: gameState):
+            key = []
+
+            for row in s.board:
+                for tile in row:
+                    if (tile == None):
+                        key.append(0)
+                    else:
+                        key.append(tile.value)
+
+            return tuple(key)
         
         # take the current state and one chosen action, 
         # look up that action inside s.generateSuccessors(adversary), 
@@ -234,10 +247,21 @@ class Agent:
         """
 
         def selectActions(state: gameState, depth: int):
-            while(True):
-                break
-                #NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE 
+            bestAction = None
+            bestScore = -99999999
+            key = stateKey(state)
+            
+            for d in range(self.depth):
+                Simulate(state, depth, pi_0)
+        
+            for a in A(state):
+                score = Q.get((key, a), 0.0)
+                
+                if (score > bestScore):
+                    bestScore = score 
+                    bestAction = a
 
+            return bestAction
 
         """
         function Simulate(s, d, pi_0):
@@ -263,25 +287,50 @@ class Agent:
             if (depth == 0):
                 return 0
             
-            if (state not in T):
+            key = stateKey(state)
+            
+            if (key not in T):
                 for a in A(state):
                     #initialize tables for all actions for that state not in the visited tree
-                    N[(state, a)] = 0
-                    Q[(state, a)] = 0.0
+                    key = stateKey(state)
                     
-                T = T.union(state)
+                    N[(key, a)] = 0
+                    Q[(key, a)] = 0.0
+                    
+                T.add(stateKey(state))
                 return Rollout(state, depth, pi_0)
+            
+            #early return
+            if len(A(state)) == 0:
+                return 0
             
             a = None 
             bestMCTS = -9999999
             
+            #iterate through all possible actions from cur state
+            for action in A(state):
+                key = stateKey(state)
+                
+                #get num time this state has been visited 
+                visits = N[key, action]
+                
+                #if never visited, it's a candidate automatically
+                if (visits == 0):
+                    a = action
+                    break
+                
+                score = Q[(key, action)] + (c * math.sqrt( (math.log(N_s(state)) / N[(key, action)])))
+                
+                if (score > bestMCTS):
+                    bestMCTS = score
+                    a = action
+                
             
-            #NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE NOT DONE 
-            for a in A(state):
-                pass 
-            
-            a = r + gamma*Simulate(newState, depth-1, pi_0)
-            
+            #lowkey i have no idea what this does i just followed the pseudocode
+            (newState, reward) = G(state, a)
+            q = reward + gamma*Simulate(newState, depth-1, pi_0)
+            N[(key, a)] = N[(key, a)] + 1
+            Q[(key, a)] = Q[(key, a)] + (q - Q[(key, a)]) / (N[(key, a)])
             return q
         
         

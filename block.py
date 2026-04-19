@@ -278,10 +278,10 @@ class App:
         
         #instantiate an agent instance (Random for now):
         agent = Agent("")
-        agent.setRandom()
+        # agent.setRandom()
         agent.setAgent("MonteCarlo")
         moveTimer = 0.0
-        moveDelay = 2.0
+        moveDelay = 0.1
         
         # game loop
         while self.state.running:
