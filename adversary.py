@@ -64,8 +64,8 @@ class Adversary(ABC):
         # return state
 
         raise NotImplementedError'''
-@dataclass
-class Adversary(ABC):
+
+class Adversary():
     # @abstractmethod
     #float = "score" of tile
     #list of probabilities and 
@@ -171,8 +171,8 @@ class Adversary(ABC):
         #evaluate the empty spaces and where the most tiles are clustered?
         # raise NotImplementedError
 
-    @abstractmethod
-    def getPlacement(self, state: GameState) -> GameState:
+    
+    def getPlacement(self, state: GameState, domain: list[int]) -> GameState:
         #stolen from han
         #this is what is actually called to place a tile in the gameboard
         # create copy of state
@@ -194,13 +194,13 @@ class Adversary(ABC):
         rowIdx, colIdx = random.choice(emptyCells)
 
         #THIS GETS REPLACED WITH THE "TOP" K CHOICES FROM GENERATESUCCESSORS?
-        tileValueChoices = [2,4]
+        tileValueChoices = domain
 
         #tileValue = random.choice(tileValueChoices)
         choices = []
         actualChoices = []
         for i in range(len(tileValueChoices)):
-            choices.append(self.generateSuccessors(state,tileValueChoices[i] ))
+            choices.append(self.generateSuccessors(state,tileValueChoices[i]))
 
         for choice in choices:
             if choice[0] != 0:

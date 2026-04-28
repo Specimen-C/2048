@@ -37,10 +37,12 @@ KEYBINDS: dict[int, Action] = {
 def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
     # no tile
     if tile is None:
-        return ((204, 193, 180), (204, 193, 180))
+        return ((204, 193, 180), (204, 193, 180)) 
 
     # tile with value
     match tile.value:
+        case -1:
+            return ((120, 12, 12), COLOR_FG_LIGHT)
         case 2:
             return ((239, 229, 218), COLOR_FG_DARK)
         case 4:
@@ -174,6 +176,10 @@ class AppContext:
     def new(block_text_font: Font, score_font: Font) -> AppContext:
         # generate block text
         block_text: dict[int, Surface] = {}
+        
+        #Add special rendered block for bomb tiles
+        block_text[-1] = block_text_font.render("B", True, get_tile_colors(Tile.newWithoutLocation(-1))[1])
+        
         i = 2
         while i <= 8192:
             block_text[i] = block_text_font.render(

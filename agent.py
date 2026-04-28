@@ -146,7 +146,7 @@ class Agent:
     #Clarifications:
         """
         s = current state.
-        d = remaining depth or horizon (so recursion doesnt go on forever; allows for finite-horizon search).
+        d = remaining depth or horizon (so recursion doesn't go on forever; allows for finite-horizon search).
         pi_0 = default policy used during rollout (random or some heuristic policy)
         A(s) = legal action set from state s 
         T = set of states already added to the search tree.
@@ -157,7 +157,7 @@ class Agent:
         c is the exploration constant in the UCB/UCT formula.
         G(s, a) is the generative model or simulator:
             given a state and action, it produces a next state and reward. 
-        s′ is the next state.
+        s` is the next state.
         r is the immediate reward.
         The symbol ~ means “sampled from.”
             So when it says (s', r) ~ G(s, a), it means the simulator samples a transition and reward from that state-action pair.
@@ -177,13 +177,13 @@ class Agent:
 
         #!!!!!!  Monte Carlo Tree Method helpers:
         def A(s: gameState):
-            print("Legal Actions: ", s.getLegalActions())
+            #print("Legal Actions: ", s.getLegalActions())
             return s.getLegalActions()
         
         #explore randomly (choose moves to simulate at random for MCTS)
         def pi_0(s: gameState):
             actions = A(s)
-            print("ACTIONS: ", actions)
+            #print("ACTIONS: ", actions)
             if (len(actions) == 0):
                 return None
             return random.choice(actions)
