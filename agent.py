@@ -2,8 +2,7 @@
 import random
 from action import Action
 from datetime import datetime
-from gameState import GameState as gameState
-from adversary import Adversary
+from gameState import GameState as gameState, Adversary
 
 #for now, defines an agent that quite literally chooses a move at randome
 class Agent:

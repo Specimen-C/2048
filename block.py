@@ -220,7 +220,11 @@ class AppState:
     """
     The game clock.
     """
-
+    
+    player: bool
+    """
+    True when there is a player, and false when the agent is playing
+    """
 
 @dataclass(kw_only=True)
 class App:
@@ -249,7 +253,7 @@ class App:
     """
 
     @staticmethod
-    def new(board_n: int) -> App:
+    def new(board_n: int, player: bool) -> App:
         # init pygame
         pygame.init()
 
@@ -268,6 +272,7 @@ class App:
             clock=pygame.time.Clock(),
             dt=0.0,
             game=GameState.startState(cfg.BOARD_N, Adversary()),
+            player = player
         )
 
         # window's surface
@@ -294,26 +299,38 @@ class App:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
-            # process events
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.state.running = False
+            
                     
-            #play game based on action from agent
-            if (not self.state.game.isLoss()):
-                moveTimer += self.state.dt
+            if self.state.player:
+                
+                #print("There is a player!")
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.state.running = False
+                    elif event.type == pygame.KEYDOWN:
+                        #print("User pressed key")
+                        user_action = KEYBINDS.get(event.key)
+                        self.state.game = self.state.game.takeTurn(user_action, Adversary())
+                
+            else:
+                    
+                #play game based on action from agent
+                if (not self.state.game.isLoss()):
+                    moveTimer += self.state.dt
 
-                if (moveTimer >= moveDelay):
-                    moveTimer = 0.0
-                    action = agent.getAction(self.state.game, Adversary())
-                    
-                    print("CHOSEN ACTION: ", action)
-                    
-                    if action is not None:
-                        self.state.game = self.state.game.takeTurn(action, Adversary())
-                        if self.state.game.isLoss():
-                            print("You lost")
-                            # break
+                    if (moveTimer >= moveDelay):
+                        moveTimer = 0.0
+                        action = agent.getAction(self.state.game, Adversary())
+                        
+                        print("CHOSEN ACTION: ", action)
+                        
+                        if action is not None:
+                            self.state.game = self.state.game.takeTurn(action, Adversary())
+                            
+            #Handle a loss
+            if self.state.game.isLoss():
+                print("You lost")
+                # break
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
@@ -431,9 +448,16 @@ if __name__ == "__main__":
         type=int,
     )
 
+    parser.add_argument(
+        "-p", 
+        "--player", 
+        help="Use flag -p to allow player control",
+        default=False, 
+        type=bool
+    )
     # parse arguments
     args = parser.parse_args()
 
     # create & run app
-    app = App.new(board_n=args.board_size)
+    app = App.new(board_n=args.board_size, player=args.player)
     app.run()
