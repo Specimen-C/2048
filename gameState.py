@@ -104,9 +104,15 @@ class Adversary:
                     #zero probability to place tile in spot that already has tile
                     returnList.append((0, state))
                 else:
-                    tile = Tile(value, rowIdx, colIdx)
+                    if value < 0:
+                        tile = BombTile(value, rowIdx, colIdx)
+                    else:
+                        tile = Tile(value, rowIdx, colIdx)
                     stateCopy = deepcopy(state)
-                    stateCopy.board[rowIdx][colIdx] = Tile(value=value, row=rowIdx, col=colIdx)
+                    if value < 0:
+                         stateCopy.board[rowIdx][colIdx] = BombTile(value=value, row=rowIdx, col=colIdx)
+                    else:
+                        stateCopy.board[rowIdx][colIdx] = Tile(value=value, row=rowIdx, col=colIdx)
                     #using values stored in a dictionary from the empty cell probabilities calculations
                     returnList.append((options[tile.row, tile.col], stateCopy))
         # print(returnList)
@@ -289,7 +295,7 @@ class GameState:
             return self
 
         # add tile
-        print("Self.domain = " + str(self.domain))
+        #print("Self.domain = " + str(self.domain))
         newState = adversary.getPlacement(newState, self.domain)
 
         #print("GameState = ")
@@ -443,29 +449,50 @@ class GameState:
         # remove empty blocks
         line = [tile for tile in line if tile is not None]
         
+        print("Line = " + str(line))
+        
         hasBomb: bool = False
         for tile in line:
             #Add extra special tile types here if we add them
+            print("Type(Tile) = " + str(type(tile)))
             if isinstance(tile, BombTile):
                 hasBomb = True
                 
+        print("HasBomb = " + str(hasBomb))
+                
         if hasBomb:
-            #Subtract total score lost by tile destruction
-            for i in range(1, len(line)):
-                score -= tile.value
-            #Clear the entire line
-            line = []
+            print("Line before bombs = " + str(line))
+            #All tiles before the bomb are deleted, and then so is the bomb
+            # 4 _ Bomb 2
+            
+            # 4 Bomb 2
+            
+            # 2 
+            
+            # 2 _ _ _
+            lastBombIndex = 0
+            for i, tile in enumerate(reversed(line)):
+                if type(tile) == BombTile and lastBombIndex != 0:
+                    lastBombIndex = i
+                #If we have found the last bombtile, remove the values of the removed tiles from score
+                if type(tile) != BombTile and lastBombIndex != 0:
+                    score -= tile.value
+            
+            #Remove the tiles before the bomb
+            line = deepcopy(line[lastBombIndex:])
+            
+            print("Line after bombs = " + str(line))
         
-        else:
-            # merge adjacents
-            for i in range(1, len(line)):
-                if line[i - 1] is not None and line[i - 1].value == line[i].value:  # type: ignore
-                    newTile: Tile = deepcopy(line[i - 1])  # type: ignore
-                    newTile.value *= 2
-                    newTile.location = None
-                    line[i - 1] = newTile
-                    line[i] = None
-                    score += newTile.value
+
+        # merge adjacents
+        for i in range(1, len(line)):
+            if line[i - 1] is not None and line[i - 1].value == line[i].value:  # type: ignore
+                newTile: Tile = deepcopy(line[i - 1])  # type: ignore
+                newTile.value *= 2
+                newTile.location = None
+                line[i - 1] = newTile
+                line[i] = None
+                score += newTile.value
 
         # remove empty blocks again
         line = [tile for tile in line if tile is not None]

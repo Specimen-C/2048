@@ -298,12 +298,9 @@ class App:
         while self.state.running:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
-
             
-                    
             if self.state.player:
-                
-                #print("There is a player!")
+                #Process pygame events
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.state.running = False
@@ -312,8 +309,7 @@ class App:
                         user_action = KEYBINDS.get(event.key)
                         self.state.game = self.state.game.takeTurn(user_action, Adversary())
                 
-            else:
-                    
+            else:   
                 #play game based on action from agent
                 if (not self.state.game.isLoss()):
                     moveTimer += self.state.dt
@@ -330,7 +326,7 @@ class App:
             #Handle a loss
             if self.state.game.isLoss():
                 print("You lost")
-                # break
+                break
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
