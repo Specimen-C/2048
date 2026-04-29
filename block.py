@@ -223,8 +223,14 @@ class AppState:
     
     player: bool
     """
-    True when there is a player, and false when the agent is playing
+    True when there is a player, and false when the agent is playing.
     """
+    
+    adversaryK: int
+    """
+    Represents the number of worst options the adversary can choose from.
+    """
+    
 
 @dataclass(kw_only=True)
 class App:
@@ -253,7 +259,7 @@ class App:
     """
 
     @staticmethod
-    def new(board_n: int, player: bool) -> App:
+    def new(board_n: int, player: bool, k: int) -> App:
         # init pygame
         pygame.init()
 
@@ -271,8 +277,9 @@ class App:
             running=True,
             clock=pygame.time.Clock(),
             dt=0.0,
-            game=GameState.startState(cfg.BOARD_N, Adversary()),
-            player = player
+            game=GameState.startState(cfg.BOARD_N, Adversary(k)),
+            player = player, 
+            adversaryK = k
         )
 
         # window's surface
@@ -289,6 +296,7 @@ class App:
         
         #instantiate an agent instance (Random for now):
         agent = Agent("")
+        adversary = Adversary(app.state.adversaryK)
         # agent.setRandom()
         agent.setAgent("MonteCarlo")
         moveTimer = 0.0
@@ -307,7 +315,7 @@ class App:
                     elif event.type == pygame.KEYDOWN:
                         #print("User pressed key")
                         user_action = KEYBINDS.get(event.key)
-                        self.state.game = self.state.game.takeTurn(user_action, Adversary())
+                        self.state.game = self.state.game.takeTurn(user_action, adversary)
                 
             else:   
                 for event in pygame.event.get():
@@ -319,18 +327,18 @@ class App:
 
                     if (moveTimer >= moveDelay):
                         moveTimer = 0.0
-                        action = agent.getAction(self.state.game, Adversary())
+                        action = agent.getAction(self.state.game, adversary)
                         
                         print("CHOSEN ACTION: ", action)
                         
                         if action is not None:
-                            self.state.game = self.state.game.takeTurn(action, Adversary())
+                            self.state.game = self.state.game.takeTurn(action, adversary)
                             
             #Handle a loss
             if self.state.game.isLoss():
                 print("You lost\nFinal State = ")
                 self.state.game.printGameState()
-                break
+                self.state.running = False
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
@@ -393,7 +401,14 @@ class App:
 
             # draw to display
             pygame.display.flip()
-
+            
+        self.state.running = True
+        
+        while self.state.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state.running = False
+                    
         # exit game
         pygame.quit()
 
@@ -455,9 +470,16 @@ if __name__ == "__main__":
         default=False, 
         type=bool
     )
+    
+    parser.add_argument(
+        "-k", 
+        help="Adversary picks randomly from top k worst placements",
+        default=5, 
+        type=int
+    )
     # parse arguments
     args = parser.parse_args()
 
     # create & run app
-    app = App.new(board_n=args.board_size, player=args.player)
+    app = App.new(board_n=args.board_size, player=args.player, k=args.k)
     app.run()

@@ -11,8 +11,17 @@ from tile import Tile
 from bombTile import BombTile
 
 
-@dataclass
+@dataclass(init=False)
 class Adversary:
+    k: int
+    """
+    The adversary chooses randomly from the k worst spots.
+    """
+    
+    
+    def __init__(self, k: int):
+        self.k = k
+    
     # helper method for finding all empty tiles
     def getEmpty(self, state:GameState) -> list:
         #iterate to find all board spaces are None
@@ -152,8 +161,9 @@ class Adversary:
         else:
             #sort the options
             temp = sorted(actualChoices, key=lambda x: x[0], reverse=True) #actualChoices.sort(key=lambda x: x[0], reverse=True) #[:(len(actualChoices)/2)]
-            #select random from the top k = actual choices /2
-            rand = random.randrange(0, int(len(temp)/2))
+            #select random from top k or choices remaining, whichever is smaller
+            k = min(self.k, int(len(temp)/2))
+            rand = random.randrange(0, k)
             return temp[rand][1]
 
 
