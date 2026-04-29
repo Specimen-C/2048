@@ -29,11 +29,12 @@ class Agent:
         board = gameState.board
         numTiles = 0
         sizeTiles = 0
+        n = len(board)
 
         #find the max tile in board
         maxtile = 0
-        for r in range(len(board)):
-            for c in range(len(board[r])):
+        for r in range(n):
+            for c in range(n):
                 tile = board[r][c]
                 if (tile != None and tile.value > maxtile):
                     maxtile = tile.value
@@ -41,39 +42,46 @@ class Agent:
                     numTiles += 1
                 sizeTiles += 1
 
-        #   Sloppy but it works for looking at corners.
-        #   If the biggest tile is in corner (if not None), add points to eval function
-        #NOTE: possible edge case of multiple "max tiles" and it doesnt want to merge
-        if (board[0][0] != None):
-            if (board[0][0].value == maxtile):
-                val += 100
-        elif (board[0][len(board) - 1] != None):
-            if (board[0][len(board) - 1].value == maxtile):
-                val += 100
-        elif (board[len(board) - 1][0] != None):
-            if (board[len(board) - 1][0].value == maxtile):
-                val += 100
-        elif (board[len(board) - 1][len(board) - 1] != None):
-            if (board[len(board) - 1][len(board) - 1].value == maxtile):
-                val += 100
+        # Reward max tile in corner (much higher weight)
+        if (board[0][0] != None and board[0][0].value == maxtile):
+            val += 500
+        if (board[0][n - 1] != None and board[0][n - 1].value == maxtile):
+            val += 500
+        if (board[n - 1][0] != None and board[n - 1][0].value == maxtile):
+            val += 500
+        if (board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile):
+            val += 500
 
-        #   Incentivise less tiles in board
-        #   made up BS lowkey, cant simulate this until the thingy actually works
-        if(numTiles <= 2*len(board)):
-            val += 100
-        elif(numTiles <= 2.5*len(board)):
-            val += 80
-        elif(numTiles <= 3*len(board)):
-            val += 50
-        elif(numTiles <= 3.5*len(board)):
-            val += 30
-        elif(numTiles <= 4*len(board)):
-            val += 10
-        elif(numTiles == sizeTiles):
-            val -= 100
+        # Reward monotonicity: tiles should decrease as you move away from max tile
+        # Check rows (left-to-right and right-to-left)
+        for r in range(n):
+            for c in range(n - 1):
+                left = board[r][c].value if board[r][c] != None else 0
+                right = board[r][c + 1].value if board[r][c + 1] != None else 0
+                if left >= right:
+                    val += 10
+                if right >= left:
+                    val += 10
+        
+        # Check columns (top-to-bottom and bottom-to-top)
+        for c in range(n):
+            for r in range(n - 1):
+                top = board[r][c].value if board[r][c] != None else 0
+                bottom = board[r + 1][c].value if board[r + 1][c] != None else 0
+                if top >= bottom:
+                    val += 10
+                if bottom >= top:
+                    val += 10
 
-        return val
+        # Incentivize empty tiles (more empty = better)
+        emptyTiles = sizeTiles - numTiles
+        val += emptyTiles * 50
 
+        # Penalty for full board
+        if numTiles == sizeTiles:
+            val -= 200
+
+        return val + gameState.score
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
     def getAction(self, gameState, adversary):
@@ -207,6 +215,7 @@ class Agent:
                         key.append(tile.value)
 
             return tuple(key)
+            return s.printGameState()
         
         # take the current state and one chosen action, 
         # look up that action inside s.generateSuccessors(adversary), 
@@ -304,7 +313,7 @@ class Agent:
                 return 0
             
             a = None 
-            bestMCTS = -9999999
+            bestMCTS = float('-inf')
             
             #iterate through all possible actions from cur state
             for action in A(state):
@@ -329,7 +338,7 @@ class Agent:
             (newState, reward) = G(state, a)
             q = reward + gamma*Simulate(newState, depth-1, pi_0)
             N[(key, a)] = N[(key, a)] + 1
-            Q[(key, a)] = Q[(key, a)] + (q - Q[(key, a)]) / (N[(key, a)])
+            Q[(key, a)] = Q[(key, a)] + (q - Q[(key, a)]) / N[(key, a)]
             return q
         
         
@@ -345,14 +354,14 @@ class Agent:
         #@returns a number, unsure if float or int
         def Rollout(state: gameState, depth: int, pi_0):
             if depth == 0:
-                return 0
+                return self.evaluate(state)
             
             #sample a random legal action (from current exploration algo)
             a = pi_0(state)
             
             #if there are no states, it's the same as hittign the depth limit
             if (a == None):
-                return 0
+                return self.evaluate(state)
             
             #continue rolling out
             (newS, r) = G(state, a)
