@@ -21,7 +21,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
-        self.depth = 5                     #default depth is 10
+        self.depth = 10                     #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -73,6 +73,40 @@ class Agent:
                 if bottom >= top:
                     val += 10
 
+        # Penalize trapped tiles (tiles not adjacent to similar values)
+        for r in range(n):
+            for c in range(n):
+                tile = board[r][c]
+                if tile == None:
+                    continue
+                
+                # Check if this tile has any mergeable neighbors
+                hasMatchingNeighbor = False
+                neighbors = []
+                
+                # Check all 4 directions
+                if r > 0:  # Up
+                    neighbors.append(board[r-1][c])
+                if r < n - 1:  # Down
+                    neighbors.append(board[r+1][c])
+                if c > 0:  # Left
+                    neighbors.append(board[r][c-1])
+                if c < n - 1:  # Right
+                    neighbors.append(board[r][c+1])
+                
+                # Check if any neighbor is same value (can merge) or empty (can move)
+                for neighbor in neighbors:
+                    if neighbor == None:  # Empty space means not trapped
+                        hasMatchingNeighbor = True
+                        break
+                    if neighbor.value == tile.value:  # Can merge
+                        hasMatchingNeighbor = True
+                        break
+                
+                # Penalize trapped tiles (bigger tiles get bigger penalties)
+                if not hasMatchingNeighbor:
+                    val -= tile.value * 0.5  # Scale penalty with tile value
+
         # Incentivize empty tiles (more empty = better)
         emptyTiles = sizeTiles - numTiles
         val += emptyTiles * 50
@@ -82,6 +116,7 @@ class Agent:
             val -= 200
 
         return val + gameState.score
+    
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
     def getAction(self, gameState, adversary):
@@ -100,7 +135,7 @@ class Agent:
             return random.choice(Actions)
 
 
-        curBestEval = 0
+        curBestEval = float('-inf')
         act = None
 
         #for every legal action
@@ -179,7 +214,7 @@ class Agent:
         Q = {}              #Q(s, a): estimated return/value for taking that action from that state; running average of all sampled q-values seen for that (s, a)
         N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
-        c = 1.1             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
+        c = 0.2             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
         d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
@@ -359,7 +394,7 @@ class Agent:
             #sample a random legal action (from current exploration algo)
             a = pi_0(state)
             
-            #if there are no states, it's the same as hittign the depth limit
+            #if there are no states, it's the same as hitting the depth limit
             if (a == None):
                 return self.evaluate(state)
             
