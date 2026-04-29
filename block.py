@@ -37,10 +37,12 @@ KEYBINDS: dict[int, Action] = {
 def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
     # no tile
     if tile is None:
-        return ((204, 193, 180), (204, 193, 180))
+        return ((204, 193, 180), (204, 193, 180)) 
 
     # tile with value
     match tile.value:
+        case -1:
+            return ((120, 12, 12), COLOR_FG_LIGHT)
         case 2:
             return ((239, 229, 218), COLOR_FG_DARK)
         case 4:
@@ -174,6 +176,10 @@ class AppContext:
     def new(block_text_font: Font, score_font: Font) -> AppContext:
         # generate block text
         block_text: dict[int, Surface] = {}
+        
+        #Add special rendered block for bomb tiles
+        block_text[-1] = block_text_font.render("B", True, get_tile_colors(Tile.newWithoutLocation(-1))[1])
+        
         i = 2
         while i <= 8192:
             block_text[i] = block_text_font.render(
@@ -214,7 +220,17 @@ class AppState:
     """
     The game clock.
     """
-
+    
+    player: bool
+    """
+    True when there is a player, and false when the agent is playing.
+    """
+    
+    adversaryK: int
+    """
+    Represents the number of worst options the adversary can choose from.
+    """
+    
 
 @dataclass(kw_only=True)
 class App:
@@ -243,7 +259,7 @@ class App:
     """
 
     @staticmethod
-    def new(board_n: int) -> App:
+    def new(board_n: int, player: bool, k: int) -> App:
         # init pygame
         pygame.init()
 
@@ -261,7 +277,9 @@ class App:
             running=True,
             clock=pygame.time.Clock(),
             dt=0.0,
-            game=GameState.startState(cfg.BOARD_N, Adversary()),
+            game=GameState.startState(cfg.BOARD_N, Adversary(k)),
+            player = player, 
+            adversaryK = k
         )
 
         # window's surface
@@ -278,36 +296,49 @@ class App:
         
         #instantiate an agent instance (Random for now):
         agent = Agent("")
+        adversary = Adversary(app.state.adversaryK)
         # agent.setRandom()
         agent.setAgent("MonteCarlo")
         moveTimer = 0.0
-        moveDelay = 0.1
+        moveDelay = 0
         
         # game loop
         while self.state.running:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
+            
+            if self.state.player:
+                #Process pygame events
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.state.running = False
+                    elif event.type == pygame.KEYDOWN:
+                        #print("User pressed key")
+                        user_action = KEYBINDS.get(event.key)
+                        self.state.game = self.state.game.takeTurn(user_action, adversary)
+                
+            else:   
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.state.running = False
+                #play game based on action from agent
+                if (not self.state.game.isLoss()):
+                    moveTimer += self.state.dt
 
-            # process events
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.state.running = False
-                    
-            #play game based on action from agent
-            if (not self.state.game.isLoss()):
-                moveTimer += self.state.dt
-
-                if (moveTimer >= moveDelay):
-                    moveTimer = 0.0
-                    action = agent.getAction(self.state.game, Adversary())
-                    
-                    print("CHOSEN ACTION: ", action)
-                    
-                    if action is not None:
-                        self.state.game = self.state.game.takeTurn(action, Adversary())
-                        if self.state.game.isLoss():
-                            print("You lost")
-                            # break
+                    if (moveTimer >= moveDelay):
+                        moveTimer = 0.0
+                        action = agent.getAction(self.state.game, adversary)
+                        
+                        print("CHOSEN ACTION: ", action)
+                        
+                        if action is not None:
+                            self.state.game = self.state.game.takeTurn(action, adversary)
+                            
+            #Handle a loss
+            if self.state.game.isLoss():
+                print("You lost\nFinal State = ")
+                self.state.game.printGameState()
+                self.state.running = False
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
@@ -370,7 +401,14 @@ class App:
 
             # draw to display
             pygame.display.flip()
-
+            
+        self.state.running = True
+        
+        while self.state.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.state.running = False
+                    
         # exit game
         pygame.quit()
 
@@ -425,9 +463,23 @@ if __name__ == "__main__":
         type=int,
     )
 
+    parser.add_argument(
+        "-p", 
+        "--player", 
+        help="Use flag -p to allow player control",
+        default=False, 
+        type=bool
+    )
+    
+    parser.add_argument(
+        "-k", 
+        help="Adversary picks randomly from top k worst placements",
+        default=5, 
+        type=int
+    )
     # parse arguments
     args = parser.parse_args()
 
     # create & run app
-    app = App.new(board_n=args.board_size)
+    app = App.new(board_n=args.board_size, player=args.player, k=args.k)
     app.run()

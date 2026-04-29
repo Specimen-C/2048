@@ -2,8 +2,7 @@
 import random
 from action import Action
 from datetime import datetime
-from gameState import GameState as gameState
-from adversary import Adversary
+from gameState import GameState as gameState, Adversary
 
 #for now, defines an agent that quite literally chooses a move at randome
 class Agent:
@@ -22,7 +21,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
-        self.depth = 20                     #default depth is 10
+        self.depth = 10                     #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -30,11 +29,12 @@ class Agent:
         board = gameState.board
         numTiles = 0
         sizeTiles = 0
+        n = len(board)
 
         #find the max tile in board
         maxtile = 0
-        for r in range(len(board)):
-            for c in range(len(board[r])):
+        for r in range(n):
+            for c in range(n):
                 tile = board[r][c]
                 if (tile != None and tile.value > maxtile):
                     maxtile = tile.value
@@ -42,39 +42,81 @@ class Agent:
                     numTiles += 1
                 sizeTiles += 1
 
-        #   Sloppy but it works for looking at corners.
-        #   If the biggest tile is in corner (if not None), add points to eval function
-        #NOTE: possible edge case of multiple "max tiles" and it doesnt want to merge
-        if (board[0][0] != None):
-            if (board[0][0].value == maxtile):
-                val += 100
-        elif (board[0][len(board) - 1] != None):
-            if (board[0][len(board) - 1].value == maxtile):
-                val += 100
-        elif (board[len(board) - 1][0] != None):
-            if (board[len(board) - 1][0].value == maxtile):
-                val += 100
-        elif (board[len(board) - 1][len(board) - 1] != None):
-            if (board[len(board) - 1][len(board) - 1].value == maxtile):
-                val += 100
+        # Reward max tile in corner (much higher weight)
+        if (board[0][0] != None and board[0][0].value == maxtile):
+            val += 500
+        if (board[0][n - 1] != None and board[0][n - 1].value == maxtile):
+            val += 500
+        if (board[n - 1][0] != None and board[n - 1][0].value == maxtile):
+            val += 500
+        if (board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile):
+            val += 500
 
-        #   Incentivise less tiles in board
-        #   made up BS lowkey, cant simulate this until the thingy actually works
-        if(numTiles <= 2*len(board)):
-            val += 100
-        elif(numTiles <= 2.5*len(board)):
-            val += 80
-        elif(numTiles <= 3*len(board)):
-            val += 50
-        elif(numTiles <= 3.5*len(board)):
-            val += 30
-        elif(numTiles <= 4*len(board)):
-            val += 10
-        elif(numTiles == sizeTiles):
-            val -= 100
+        # Reward monotonicity: tiles should decrease as you move away from max tile
+        # Check rows (left-to-right and right-to-left)
+        for r in range(n):
+            for c in range(n - 1):
+                left = board[r][c].value if board[r][c] != None else 0
+                right = board[r][c + 1].value if board[r][c + 1] != None else 0
+                if left >= right:
+                    val += 10
+                if right >= left:
+                    val += 10
+        
+        # Check columns (top-to-bottom and bottom-to-top)
+        for c in range(n):
+            for r in range(n - 1):
+                top = board[r][c].value if board[r][c] != None else 0
+                bottom = board[r + 1][c].value if board[r + 1][c] != None else 0
+                if top >= bottom:
+                    val += 10
+                if bottom >= top:
+                    val += 10
 
-        return val
+        # Penalize trapped tiles (tiles not adjacent to similar values)
+        for r in range(n):
+            for c in range(n):
+                tile = board[r][c]
+                if tile == None:
+                    continue
+                
+                # Check if this tile has any mergeable neighbors
+                hasMatchingNeighbor = False
+                neighbors = []
+                
+                # Check all 4 directions
+                if r > 0:  # Up
+                    neighbors.append(board[r-1][c])
+                if r < n - 1:  # Down
+                    neighbors.append(board[r+1][c])
+                if c > 0:  # Left
+                    neighbors.append(board[r][c-1])
+                if c < n - 1:  # Right
+                    neighbors.append(board[r][c+1])
+                
+                # Check if any neighbor is same value (can merge) or empty (can move)
+                for neighbor in neighbors:
+                    if neighbor == None:  # Empty space means not trapped
+                        hasMatchingNeighbor = True
+                        break
+                    if neighbor.value == tile.value:  # Can merge
+                        hasMatchingNeighbor = True
+                        break
+                
+                # Penalize trapped tiles (bigger tiles get bigger penalties)
+                if not hasMatchingNeighbor:
+                    val -= tile.value * 0.5  # Scale penalty with tile value
 
+        # Incentivize empty tiles (more empty = better)
+        emptyTiles = sizeTiles - numTiles
+        val += emptyTiles * 50
+
+        # Penalty for full board
+        if numTiles == sizeTiles:
+            val -= 200
+
+        return val + gameState.score
+    
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
     def getAction(self, gameState, adversary):
@@ -93,7 +135,7 @@ class Agent:
             return random.choice(Actions)
 
 
-        curBestEval = 0
+        curBestEval = float('-inf')
         act = None
 
         #for every legal action
@@ -146,7 +188,7 @@ class Agent:
     #Clarifications:
         """
         s = current state.
-        d = remaining depth or horizon (so recursion doesnt go on forever; allows for finite-horizon search).
+        d = remaining depth or horizon (so recursion doesn't go on forever; allows for finite-horizon search).
         pi_0 = default policy used during rollout (random or some heuristic policy)
         A(s) = legal action set from state s 
         T = set of states already added to the search tree.
@@ -157,7 +199,7 @@ class Agent:
         c is the exploration constant in the UCB/UCT formula.
         G(s, a) is the generative model or simulator:
             given a state and action, it produces a next state and reward. 
-        s′ is the next state.
+        s` is the next state.
         r is the immediate reward.
         The symbol ~ means “sampled from.”
             So when it says (s', r) ~ G(s, a), it means the simulator samples a transition and reward from that state-action pair.
@@ -172,18 +214,18 @@ class Agent:
         Q = {}              #Q(s, a): estimated return/value for taking that action from that state; running average of all sampled q-values seen for that (s, a)
         N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
-        c = 1.1             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
+        c = 0.2             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
         d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
         def A(s: gameState):
-            print("Legal Actions: ", s.getLegalActions())
+            #print("Legal Actions: ", s.getLegalActions())
             return s.getLegalActions()
         
         #explore randomly (choose moves to simulate at random for MCTS)
         def pi_0(s: gameState):
             actions = A(s)
-            print("ACTIONS: ", actions)
+            #print("ACTIONS: ", actions)
             if (len(actions) == 0):
                 return None
             return random.choice(actions)
@@ -208,6 +250,7 @@ class Agent:
                         key.append(tile.value)
 
             return tuple(key)
+            return s.printGameState()
         
         # take the current state and one chosen action, 
         # look up that action inside s.generateSuccessors(adversary), 
@@ -305,7 +348,7 @@ class Agent:
                 return 0
             
             a = None 
-            bestMCTS = -9999999
+            bestMCTS = float('-inf')
             
             #iterate through all possible actions from cur state
             for action in A(state):
@@ -330,7 +373,7 @@ class Agent:
             (newState, reward) = G(state, a)
             q = reward + gamma*Simulate(newState, depth-1, pi_0)
             N[(key, a)] = N[(key, a)] + 1
-            Q[(key, a)] = Q[(key, a)] + (q - Q[(key, a)]) / (N[(key, a)])
+            Q[(key, a)] = Q[(key, a)] + (q - Q[(key, a)]) / N[(key, a)]
             return q
         
         
@@ -346,14 +389,14 @@ class Agent:
         #@returns a number, unsure if float or int
         def Rollout(state: gameState, depth: int, pi_0):
             if depth == 0:
-                return 0
+                return self.evaluate(state)
             
             #sample a random legal action (from current exploration algo)
             a = pi_0(state)
             
-            #if there are no states, it's the same as hittign the depth limit
+            #if there are no states, it's the same as hitting the depth limit
             if (a == None):
-                return 0
+                return self.evaluate(state)
             
             #continue rolling out
             (newS, r) = G(state, a)
