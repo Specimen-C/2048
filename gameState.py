@@ -253,7 +253,7 @@ class GameState:
         # instance vars
         self.score = 0
         self.n = n
-        self.domain = [-1, 2, 4]
+        self.domain = [2,4]#[-1, 2, 4]
 
     @staticmethod
     def startState(n: int, adversary: Adversary) -> GameState:
@@ -449,39 +449,33 @@ class GameState:
         # remove empty blocks
         line = [tile for tile in line if tile is not None]
         
-        print("Line = " + str(line))
+        #print("Line = " + str(line))
         
         hasBomb: bool = False
         for tile in line:
             #Add extra special tile types here if we add them
-            print("Type(Tile) = " + str(type(tile)))
+            #print("Type(Tile) = " + str(type(tile)))
             if isinstance(tile, BombTile):
                 hasBomb = True
                 
-        print("HasBomb = " + str(hasBomb))
+        #print("HasBomb = " + str(hasBomb))
                 
         if hasBomb:
-            print("Line before bombs = " + str(line))
+            #print("Line before bombs = " + str(line))
             #All tiles before the bomb are deleted, and then so is the bomb
-            # 4 _ Bomb 2
-            
-            # 4 Bomb 2
-            
-            # 2 
-            
-            # 2 _ _ _
+
             lastBombIndex = 0
             for i, tile in enumerate(reversed(line)):
-                if type(tile) == BombTile and lastBombIndex != 0:
+                if type(tile) == BombTile and lastBombIndex == 0:
                     lastBombIndex = i
                 #If we have found the last bombtile, remove the values of the removed tiles from score
                 if type(tile) != BombTile and lastBombIndex != 0:
                     score -= tile.value
             
             #Remove the tiles before the bomb
-            line = deepcopy(line[lastBombIndex:])
+            line = deepcopy(line[lastBombIndex + 1:])
             
-            print("Line after bombs = " + str(line))
+            #print("LastBombIndex = " + str(lastBombIndex) + "\nLine after bombs = " + str(line))
         
 
         # merge adjacents

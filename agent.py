@@ -21,7 +21,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
-        self.depth = 20                     #default depth is 10
+        self.depth = 15                     #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):

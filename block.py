@@ -292,7 +292,7 @@ class App:
         # agent.setRandom()
         agent.setAgent("MonteCarlo")
         moveTimer = 0.0
-        moveDelay = 0.1
+        moveDelay = 0
         
         # game loop
         while self.state.running:
@@ -310,6 +310,9 @@ class App:
                         self.state.game = self.state.game.takeTurn(user_action, Adversary())
                 
             else:   
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.state.running = False
                 #play game based on action from agent
                 if (not self.state.game.isLoss()):
                     moveTimer += self.state.dt
@@ -325,7 +328,8 @@ class App:
                             
             #Handle a loss
             if self.state.game.isLoss():
-                print("You lost")
+                print("You lost\nFinal State = ")
+                self.state.game.printGameState()
                 break
 
             # fill screen with background
