@@ -4,7 +4,7 @@ from action import Action
 from datetime import datetime
 from gameState import GameState as gameState, Adversary
 
-#for now, defines an agent that quite literally chooses a move at randome
+#for now, defines an agent that quite literally chooses a move at random
 class Agent:
 
     #typehints
@@ -21,7 +21,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
-        self.depth = 10                    #default depth is 10
+        self.depth = 10                     #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -42,15 +42,15 @@ class Agent:
                     numTiles += 1
                 sizeTiles += 1
 
-        # Reward max tile in corner (much higher weight)
+        # Reward max tile in corner
         if (board[0][0] != None and board[0][0].value == maxtile):
-            val += 500
+            val += gameState.score * 200
         if (board[0][n - 1] != None and board[0][n - 1].value == maxtile):
-            val += 500
+            val += gameState.score * 200
         if (board[n - 1][0] != None and board[n - 1][0].value == maxtile):
-            val += 500
+            val += gameState.score * 200
         if (board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile):
-            val += 500
+            val += gameState.score * 200
 
         # Reward monotonicity: tiles should decrease as you move away from max tile
         # Check rows (left-to-right and right-to-left)
@@ -59,9 +59,9 @@ class Agent:
                 left = board[r][c].value if board[r][c] != None else 0
                 right = board[r][c + 1].value if board[r][c + 1] != None else 0
                 if left >= right:
-                    val += 10
+                    val += 1000
                 if right >= left:
-                    val += 10
+                    val += 1000
         
         # Check columns (top-to-bottom and bottom-to-top)
         for c in range(n):
@@ -69,9 +69,9 @@ class Agent:
                 top = board[r][c].value if board[r][c] != None else 0
                 bottom = board[r + 1][c].value if board[r + 1][c] != None else 0
                 if top >= bottom:
-                    val += 10
+                    val += 1000
                 if bottom >= top:
-                    val += 10
+                    val += 1000
 
         # Penalize trapped tiles (tiles not adjacent to similar values)
         for r in range(n):
@@ -109,7 +109,7 @@ class Agent:
 
         # Incentivize empty tiles (more empty = better)
         emptyTiles = sizeTiles - numTiles
-        val += emptyTiles * 50
+        val += emptyTiles * gameState.score * 100000
 
         # Penalty for full board
         if numTiles == sizeTiles:
@@ -214,7 +214,7 @@ class Agent:
         Q = {}              #Q(s, a): estimated return/value for taking that action from that state; running average of all sampled q-values seen for that (s, a)
         N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
-        c = 2             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
+        c = 50             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
         d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
