@@ -24,7 +24,7 @@
 - Create a MCT class so it is persistent (Mack)
 - Update bomb tiles so they're usable (Max)
 - Update evaluation (YG)
-- Make a testing harness for finding average scores
+- Make a testing harness for finding average scores (Han)
     - Make a no graphics option
 - Tinker with c value (Exploration bonus) (YG)
 - Start report (Sadness)
