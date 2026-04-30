@@ -1,5 +1,8 @@
 {
-    "cSpell.words": [
-        "KEYBINDS"
-    ]
+  "cSpell.words": [
+    "KEYBINDS"
+  ],
+  "[python]": {
+    "editor.formatOnSave": false,
+  },
 }
