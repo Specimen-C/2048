@@ -21,7 +21,7 @@ class Agent:
         self.born = datetime.now()          #datetime obj
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
-        self.depth = 10                     #default depth is 10
+        self.depth = 10                    #default depth is 10
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
@@ -115,7 +115,7 @@ class Agent:
         if numTiles == sizeTiles:
             val -= 200
 
-        return val + gameState.score
+        return val + 0.5 * gameState.score
     
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
@@ -214,7 +214,7 @@ class Agent:
         Q = {}              #Q(s, a): estimated return/value for taking that action from that state; running average of all sampled q-values seen for that (s, a)
         N = {}              #N(s, a): number of times that action was chosen from that state;      used both for UCT exploration and for updating Q by incremental average.
         gamma = 1.0         #simulate finite number of states, so no need to discount (i think?)
-        c = 0.2             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
+        c = 2             #how much you value "uncertainty". large = explore more than exploit; small = trust current Q(s,a) value. Explore for now.
         d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
@@ -328,7 +328,7 @@ class Agent:
 
         def Simulate(state: gameState, depth: int, pi_0):
             if (depth == 0):
-                return 0
+                return self.evaluate(state)
             
             key = stateKey(state)
             
@@ -396,7 +396,7 @@ class Agent:
             
             #if there are no states, it's the same as hitting the depth limit
             if (a == None):
-                return self.evaluate(state)
+                return (1.0 / state.score) * -10000
             
             #continue rolling out
             (newS, r) = G(state, a)
