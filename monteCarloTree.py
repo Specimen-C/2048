@@ -23,11 +23,15 @@ class MCTreeNode:
     """
     
     def __init__(self, state: GameState, action: Action):
-        self.value: tuple[GameState, Action] = (state, action)
+        self.data: tuple[GameState, Action] = (state, action)
+        self.score: float = 0 #Should be some evaluation
         self.children: list[MCTreeNode] = []
         
         
     def addChild(self, node: MCTreeNode) -> None:
         self.children.append(node)
+        
+    def updateScore(self, score: float):
+        self.score = score
         
     
