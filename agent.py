@@ -25,6 +25,9 @@ class Agent:
 
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: gameState):
+        
+        #Use negative exponential for score to balance diminishing returns with risk
+        
         val = 0
         board = gameState.board
         numTiles = 0
