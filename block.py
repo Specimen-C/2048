@@ -33,10 +33,10 @@ KEYBINDS: dict[int, Action] = {
     pygame.K_RIGHT: Action.RIGHT,
 }
 
-#Globals:
-sampled_games = 5       #How many games to sample from
+# Globals:
+sampled_games = 5  # How many games to sample from
 
-#i'm lazy
+# i'm lazy
 single_game_score = 0
 single_game_max_tile = 0
 
@@ -44,7 +44,7 @@ single_game_max_tile = 0
 def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
     # no tile
     if tile is None:
-        return ((204, 193, 180), (204, 193, 180)) 
+        return ((204, 193, 180), (204, 193, 180))
 
     # tile with value
     match tile.value:
@@ -183,10 +183,12 @@ class AppContext:
     def new(block_text_font: Font, score_font: Font) -> AppContext:
         # generate block text
         block_text: dict[int, Surface] = {}
-        
-        #Add special rendered block for bomb tiles
-        block_text[-1] = block_text_font.render("B", True, get_tile_colors(Tile.newWithoutLocation(-1))[1])
-        
+
+        # Add special rendered block for bomb tiles
+        block_text[-1] = block_text_font.render(
+            "B", True, get_tile_colors(Tile.newWithoutLocation(-1))[1]
+        )
+
         i = 2
         while i <= 8192:
             block_text[i] = block_text_font.render(
@@ -227,17 +229,17 @@ class AppState:
     """
     The game clock.
     """
-    
+
     player: bool
     """
     True when there is a player, and false when the agent is playing.
     """
-    
+
     adversaryK: int
     """
     Represents the number of worst options the adversary can choose from.
     """
-    
+
 
 @dataclass(kw_only=True)
 class App:
@@ -285,8 +287,8 @@ class App:
             clock=pygame.time.Clock(),
             dt=0.0,
             game=GameState.startState(cfg.BOARD_N, Adversary(k)),
-            player = player, 
-            adversaryK = k
+            player=player,
+            adversaryK=k,
         )
 
         # window's surface
@@ -298,51 +300,56 @@ class App:
             ctx=ctx,
             state=state,
         )
+
     def run(self) -> None:
-        
-        #instantiate an agent instance (Random for now):
+
+        # instantiate an agent instance (Random for now):
         agent = Agent("")
         adversary = Adversary(app.state.adversaryK)
         # agent.setRandom()
         agent.setAgent("MonteCarlo")
         moveTimer = 0.0
         moveDelay = 0
-        
+
         # game loop
         while self.state.running:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
-            
+
             if self.state.player:
-                #Process pygame events
+                # Process pygame events
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.state.running = False
                     elif event.type == pygame.KEYDOWN:
-                        #print("User pressed key")
+                        # print("User pressed key")
                         user_action = KEYBINDS.get(event.key)
-                        self.state.game = self.state.game.takeTurn(user_action, adversary)
-                
-            else:   
+                        self.state.game = self.state.game.takeTurn(
+                            user_action, adversary
+                        )
+
+            else:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.state.running = False
-                #play game based on action from agent
-                if (not self.state.game.isLoss()):
+                # play game based on action from agent
+                if not self.state.game.isLoss():
                     moveTimer += self.state.dt
 
-                    if (moveTimer >= moveDelay):
+                    if moveTimer >= moveDelay:
                         moveTimer = 0.0
                         action = agent.getAction(self.state.game, adversary)
-                        
+
                         print("CHOSEN ACTION: ", action)
-                        
+
                         if action is not None:
-                            self.state.game = self.state.game.takeTurn(action, adversary)
-                            
+                            self.state.game = self.state.game.takeTurn(
+                                action, adversary
+                            )
+
                         agent.tree.setRoot(self.state.game, action)
-                            
-            #Handle a loss
+
+            # Handle a loss
             if self.state.game.isLoss():
                 print("You lost\nFinal State = ")
                 self.state.game.printGameState()
@@ -409,9 +416,9 @@ class App:
 
             # draw to display
             pygame.display.flip()
-            
+
         self.state.running = True
-        
+
         while self.state.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -454,16 +461,19 @@ class App:
 
         # draw cell onto board
         board.blit(cell, (cell_x, cell_y))
-    
+
     def set_print_values(self):
         global single_game_score
         single_game_score = self.state.game.score
-        
+
         global single_game_max_tile
         single_game_max_tile = 0
         for r in range(len(self.state.game.board)):
             for c in range(len(self.state.game.board[r])):
-                if (self.state.game.board[r][c] != None and self.state.game.board[r][c].value > single_game_max_tile):
+                if (
+                    self.state.game.board[r][c] != None
+                    and self.state.game.board[r][c].value > single_game_max_tile
+                ):
                     single_game_max_tile = self.state.game.board[r][c].value
 
     def print_results(self):
@@ -473,23 +483,24 @@ class App:
         print(f"Game Score: {single_game_score}")
         print(f"Maximum Tile Value: {single_game_max_tile}")
 
+
 class NoGraphicsApp:
     #######################
-    
-    #Typehints:
+
+    # Typehints:
     game: GameState
     adv: Adversary
-    
-    #Create a new gamestate/adversary to run on
+
+    # Create a new gamestate/adversary to run on
     @staticmethod
     def new(board_n: int, k: int) -> App:
         app = NoGraphicsApp()
-        
+
         app.adv = Adversary(k)
         app.game = GameState.startState(board_n, app.adv)
-        
+
         return app
-    
+
     def print_results(self, avg, max_t, max_s, min_s):
         print()
         print(f"Average Game Scores: {avg}")
@@ -498,76 +509,82 @@ class NoGraphicsApp:
         print(f"Min Score: {min_s}")
 
     def run(self):
-        #no graphics game simulation
+        # no graphics game simulation
         print("WARN: No graphics mode is ON")
-        
-        #instantiate an agent and adversary instance:
+
+        # instantiate an agent and adversary instance:
         agent = Agent("")
         agent.setAgent("MonteCarlo")
         adversary = self.adv
-        
-        #for post-sim statistics
+
+        # for post-sim statistics
         total_score = 0
         max_max_tile = 0
         min_min_score = 9999999999
         max_max_score = 0
-        
-        #simulate the game n many times
+
+        # simulate the game n many times
         for gameidx in range(sampled_games):
             gameScore = 0
             max_tile = 0
 
             # game loop
             while not self.game.isLoss():
-                #play game based on action from agent
+                # play game based on action from agent
                 # print(self.game.board)
                 action = agent.getAction(self.game, adversary)
                 print("CHOSEN ACTION: ", action)
-                
+
                 if action is not None:
                     self.game = self.game.takeTurn(action, adversary)
-                            
-            #Handle a loss
+
+            # Handle a loss
             print("You lost\nFinal State = ")
             self.game.printGameState()
-            
+
             gameScore = self.game.score
 
-            #max tile reached
+            # max tile reached
             for r in range(len(self.game.board)):
                 for c in range(len(self.game.board[r])):
-                    if (self.game.board[r][c] != None and self.game.board[r][c].value > max_tile):
+                    if (
+                        self.game.board[r][c] != None
+                        and self.game.board[r][c].value > max_tile
+                    ):
                         max_tile = self.game.board[r][c].value
-            
+
             total_score += gameScore
-            
-            if (gameScore > max_max_score):
-                max_max_score = gameScore 
-                
-            if (gameScore < min_min_score):
+
+            if gameScore > max_max_score:
+                max_max_score = gameScore
+
+            if gameScore < min_min_score:
                 min_min_score = gameScore
-            
-            if (max_tile > max_max_tile):
+
+            if max_tile > max_max_tile:
                 max_max_tile = max_tile
-            
-            #Game end result prints:
+
+            # Game end result prints:
             print()
             print("-------------------------------------------------------")
             print(f"Game Over!")
-            print(f"Game {gameidx}:      Score = {gameScore};        Max_Tile = {max_tile} ")
-            
-            #restart
+            print(
+                f"Game {gameidx}:      Score = {gameScore};        Max_Tile = {max_tile} "
+            )
+
+            # restart
             self.game = GameState.startState(args.board_size, self.adv)
-            
+
         avg = total_score / sampled_games
         max_t = max_max_tile
         max_s = max_max_score
         min_s = min_min_score
-        
+
         self.print_results(avg, max_t, max_s, min_s)
-        
+
         return
         ##########################
+
 
 # when run as script
 if __name__ == "__main__":
@@ -585,35 +602,38 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-p", 
-        "--player", 
+        "-p",
+        "--player",
         help="Use flag -p to allow player control",
-        default=False, 
-        type=bool
+        default=False,
+        type=bool,
     )
-    
+
     parser.add_argument(
-        "-k", 
+        "-k",
         help="Adversary picks randomly from top k worst placements",
-        default=5, 
-        type=int
+        default=5,
+        type=int,
     )
-    
+
     parser.add_argument(
-        "-g", 
+        "-g",
         "--no-graphics",
         help="Use flag --no-graphics for a no graphics simulation",
         dest="nograph",
-        action="store_true"
+        action="store_true",
     )
-    
+
     # parse arguments
     args = parser.parse_args()
 
     # create & run app
-    if not args.nograph: app = App.new(board_n=args.board_size, player=args.player, k=args.k)
-    else: app = NoGraphicsApp.new(board_n=args.board_size, k=args.k)
+    if not args.nograph:
+        app = App.new(board_n=args.board_size, player=args.player, k=args.k)
+    else:
+        app = NoGraphicsApp.new(board_n=args.board_size, k=args.k)
     app.run()
-    
-    #Post-Game results:
-    if not args.nograph: app.print_results()
+
+    # Post-Game results:
+    if not args.nograph:
+        app.print_results()
