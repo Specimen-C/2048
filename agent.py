@@ -27,9 +27,6 @@ class Agent:
     #returns a float, evaluates a given game state
     def evaluate(self, gameState: GameState):
         
-        #Use negative exponential for score to balance diminishing returns with risk
-        from math import e
-        
         val = 0
         board = gameState.board
         numTiles = 0
@@ -58,25 +55,25 @@ class Agent:
             val += gameState.score * 200
 
         # Reward monotonicity: tiles should decrease as you move away from max tile
-        # Check rows (left-to-right and right-to-left)
+        # Check rows 
         for r in range(n):
             for c in range(n - 1):
                 left = board[r][c].value if board[r][c] != None else 0
                 right = board[r][c + 1].value if board[r][c + 1] != None else 0
                 if left >= right:
-                    val += 1000
+                    val += gameState.score * 1000
                 if right >= left:
-                    val += 1000
+                    val += gameState.score *1000
         
-        # Check columns (top-to-bottom and bottom-to-top)
+        # Check columns 
         for c in range(n):
             for r in range(n - 1):
                 top = board[r][c].value if board[r][c] != None else 0
                 bottom = board[r + 1][c].value if board[r + 1][c] != None else 0
                 if top >= bottom:
-                    val += 1000
+                    val += gameState.score * 1000
                 if bottom >= top:
-                    val += 1000
+                    val += gameState.score * 1000
 
         # Penalize trapped tiles (tiles not adjacent to similar values)
         for r in range(n):
@@ -110,7 +107,7 @@ class Agent:
                 
                 # Penalize trapped tiles (bigger tiles get bigger penalties)
                 if not hasMatchingNeighbor:
-                    val -= tile.value * 0.5  # Scale penalty with tile value
+                    val -= gameState.score * tile.value  # Scale penalty with tile value
 
         # Incentivize empty tiles (more empty = better)
         emptyTiles = sizeTiles - numTiles
@@ -118,7 +115,7 @@ class Agent:
 
         # Penalty for full board
         if numTiles == sizeTiles:
-            val -= 200
+            val -= gameState.score * 200
 
         return val + gameState.score
     
@@ -286,7 +283,7 @@ class MCTree:
         
         legalActions = state.getLegalActions()
         
-        # If any action hasn't been tried yet, try it (exploration)
+        # If any action hasn't been tried yet, try it
         for action in legalActions:
             if (state, action) not in self.n_table:
                 return action
@@ -295,12 +292,12 @@ class MCTree:
         bestScore = float('-inf')
         bestAction = None
         
-        # Total visits to this state (sum of all action visits)
+        # Total visits to this state
         totalVisits = sum(self.n_table.get((state, a), 0) for a in legalActions)
         
         for action in legalActions:
             q = self.q_table.get((state, action), 0)  # Exploitation term
-            n = self.n_table.get((state, action), 1)   # Avoid division by zero
+            n = self.n_table.get((state, action), 1)  # Avoid division by zero
             
             # UCB1 formula: Q(s,a) + c * sqrt(ln(N) / n(s,a))
             ucb_score = q + self.exploration_factor * math.sqrt(math.log(totalVisits + 1) / n)
