@@ -33,6 +33,13 @@ KEYBINDS: dict[int, Action] = {
     pygame.K_RIGHT: Action.RIGHT,
 }
 
+#Globals:
+sampled_games = 5       #How many games to sample from
+
+#i'm lazy
+single_game_score = 0
+single_game_max_tile = 0
+
 
 def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
     # no tile
@@ -291,7 +298,6 @@ class App:
             ctx=ctx,
             state=state,
         )
-
     def run(self) -> None:
         
         #instantiate an agent instance (Random for now):
@@ -408,7 +414,7 @@ class App:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.state.running = False
-                    
+        self.set_print_values()
         # exit game
         pygame.quit()
 
@@ -446,7 +452,120 @@ class App:
 
         # draw cell onto board
         board.blit(cell, (cell_x, cell_y))
+    
+    def set_print_values(self):
+        global single_game_score
+        single_game_score = self.state.game.score
+        
+        global single_game_max_tile
+        single_game_max_tile = 0
+        for r in range(len(self.state.game.board)):
+            for c in range(len(self.state.game.board[r])):
+                if (self.state.game.board[r][c] != None and self.state.game.board[r][c].value > single_game_max_tile):
+                    single_game_max_tile = self.state.game.board[r][c].value
 
+    def print_results(self):
+        print()
+        global single_game_score
+        global single_game_max_tile
+        print(f"Game Score: {single_game_score}")
+        print(f"Maximum Tile Value: {single_game_max_tile}")
+
+class NoGraphicsApp:
+    #######################
+    
+    #Typehints:
+    game: GameState
+    adv: Adversary
+    
+    #Create a new gamestate/adversary to run on
+    @staticmethod
+    def new(board_n: int, k: int) -> App:
+        app = NoGraphicsApp()
+        
+        app.adv = Adversary(k)
+        app.game = GameState.startState(board_n, app.adv)
+        
+        return app
+    
+    def print_results(self, avg, max_t, max_s, min_s):
+        print()
+        print(f"Average Game Scores: {avg}")
+        print(f"Maximum Tile Value Across All Boards: {max_t}")
+        print(f"Max Score: {max_s}")
+        print(f"Min Score: {min_s}")
+
+    def run(self):
+        #no graphics game simulation
+        print("WARN: No graphics mode is ON")
+        
+        #instantiate an agent and adversary instance:
+        agent = Agent("")
+        agent.setAgent("MonteCarlo")
+        adversary = self.adv
+        
+        #for post-sim statistics
+        total_score = 0
+        max_max_tile = 0
+        min_min_score = 9999999999
+        max_max_score = 0
+        
+        #simulate the game n many times
+        for gameidx in range(sampled_games):
+            gameScore = 0
+            max_tile = 0
+
+            # game loop
+            while not self.game.isLoss():
+                #play game based on action from agent
+                # print(self.game.board)
+                action = agent.getAction(self.game, adversary)
+                print("CHOSEN ACTION: ", action)
+                
+                if action is not None:
+                    self.game = self.game.takeTurn(action, adversary)
+                            
+            #Handle a loss
+            print("You lost\nFinal State = ")
+            self.game.printGameState()
+            
+            gameScore = self.game.score
+
+            #max tile reached
+            for r in range(len(self.game.board)):
+                for c in range(len(self.game.board[r])):
+                    if (self.game.board[r][c] != None and self.game.board[r][c].value > max_tile):
+                        max_tile = self.game.board[r][c].value
+            
+            total_score += gameScore
+            
+            if (gameScore > max_max_score):
+                max_max_score = gameScore 
+                
+            if (gameScore < min_min_score):
+                min_min_score = gameScore
+            
+            if (max_tile > max_max_tile):
+                max_max_tile = max_tile
+            
+            #Game end result prints:
+            print()
+            print("-------------------------------------------------------")
+            print(f"Game Over!")
+            print(f"Game {gameidx}:      Score = {gameScore};        Max_Tile = {max_tile} ")
+            
+            #restart
+            self.game = GameState.startState(args.board_size, self.adv)
+            
+        avg = total_score / sampled_games
+        max_t = max_max_tile
+        max_s = max_max_score
+        min_s = min_min_score
+        
+        self.print_results(avg, max_t, max_s, min_s)
+        
+        return
+        ##########################
 
 # when run as script
 if __name__ == "__main__":
@@ -477,9 +596,22 @@ if __name__ == "__main__":
         default=5, 
         type=int
     )
+    
+    parser.add_argument(
+        "-g", 
+        "--no-graphics",
+        help="Use flag --no-graphics for a no graphics simulation",
+        dest="nograph",
+        action="store_true"
+    )
+    
     # parse arguments
     args = parser.parse_args()
 
     # create & run app
-    app = App.new(board_n=args.board_size, player=args.player, k=args.k)
+    if not args.nograph: app = App.new(board_n=args.board_size, player=args.player, k=args.k)
+    else: app = NoGraphicsApp.new(board_n=args.board_size, k=args.k)
     app.run()
+    
+    #Post-Game results:
+    if not args.nograph: app.print_results()
