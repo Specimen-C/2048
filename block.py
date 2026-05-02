@@ -478,11 +478,14 @@ class NoGraphicsApp:
     game: GameState
     adv: Adversary
     
+    #Create a new gamestate/adversary to run on
     @staticmethod
     def new(board_n: int, k: int) -> App:
         app = NoGraphicsApp()
-        app.game = GameState(board_n)
+        
         app.adv = Adversary(k)
+        app.game = GameState.startState(board_n, app.adv)
+        
         return app
     
     def print_results(self, avg, max_t, max_s, min_s):
@@ -501,9 +504,10 @@ class NoGraphicsApp:
         agent.setAgent("MonteCarlo")
         adversary = self.adv
         
+        #for post-sim statistics
         total_score = 0
         max_max_tile = 0
-        min_min_score = 0
+        min_min_score = 9999999999
         max_max_score = 0
         
         #simulate the game n many times
@@ -514,6 +518,7 @@ class NoGraphicsApp:
             # game loop
             while not self.game.isLoss():
                 #play game based on action from agent
+                # print(self.game.board)
                 action = agent.getAction(self.game, adversary)
                 print("CHOSEN ACTION: ", action)
                 
@@ -523,7 +528,10 @@ class NoGraphicsApp:
             #Handle a loss
             print("You lost\nFinal State = ")
             self.game.printGameState()
+            
+            gameScore = self.game.score
 
+            #max tile reached
             for r in range(len(self.game.board)):
                 for c in range(len(self.game.board[r])):
                     if (self.game.board[r][c] != None and self.game.board[r][c].value > max_tile):
@@ -546,22 +554,18 @@ class NoGraphicsApp:
             print(f"Game Over!")
             print(f"Game {gameidx}:      Score = {gameScore};        Max_Tile = {max_tile} ")
             
-            #how do?
-            self.game = self.new(args.board_n, args.k)
+            #restart
+            self.game = GameState.startState(args.board_size, self.adv)
             
         avg = total_score / sampled_games
-        max_t = None
-        max_s = None 
-        min_s = None
+        max_t = max_max_tile
+        max_s = max_max_score
+        min_s = min_min_score
         
         self.print_results(avg, max_t, max_s, min_s)
         
         return
         ##########################
-        
-    #god help me holy
-    def reset_board(self):
-        pass
 
 # when run as script
 if __name__ == "__main__":
@@ -610,4 +614,4 @@ if __name__ == "__main__":
     app.run()
     
     #Post-Game results:
-    app.print_results()
+    if not args.nograph: app.print_results()
