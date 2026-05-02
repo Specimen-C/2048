@@ -340,6 +340,8 @@ class App:
                         if action is not None:
                             self.state.game = self.state.game.takeTurn(action, adversary)
                             
+                        agent.tree.setRoot(self.state.game, action)
+                            
             #Handle a loss
             if self.state.game.isLoss():
                 print("You lost\nFinal State = ")

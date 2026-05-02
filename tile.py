@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 
 
-@dataclass
+@dataclass(eq=True)
 class Tile:
     value: int
     """
@@ -90,3 +90,6 @@ class Tile:
             return False
 
         return True
+    
+    def __hash__(self) -> int:
+        return hash((self.value, self.location))
