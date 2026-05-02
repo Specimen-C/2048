@@ -26,7 +26,7 @@ class Agent:
 
     # values with defaults
     gravestone: str = "Did their best."
-    mode: AgentMode = AgentMode.RANDOM
+    mode: AgentMode = AgentMode.MONTE_CARLO
 
     # set in post init
     born: datetime = field(init=False)

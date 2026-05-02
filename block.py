@@ -304,10 +304,8 @@ class App:
     def run(self) -> None:
 
         # instantiate an agent instance (Random for now):
-        agent = Agent("")
+        agent = Agent(maxDepth=40, maxIter=40, name="Agent")
         adversary = Adversary(app.state.adversaryK)
-        # agent.setRandom()
-        agent.setAgent("MonteCarlo")
         moveTimer = 0.0
         moveDelay = 0
 
@@ -346,8 +344,6 @@ class App:
                             self.state.game = self.state.game.takeTurn(
                                 action, adversary
                             )
-
-                        agent.tree.setRoot(self.state.game, action)
 
             # Handle a loss
             if self.state.game.isLoss():
