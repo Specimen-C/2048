@@ -65,7 +65,7 @@ class Agent:
             case AgentMode.RANDOM:
                 return random.choice(state.getLegalActions())
             case AgentMode.MONTE_CARLO:
-                return self.tree.search(state, adversary)
+                return self.tree.search(state, self, adversary)
 
     @property
     def lifespan(self) -> timedelta | None:
@@ -83,21 +83,21 @@ class MCTree:
     maxIter: int = 100
 
     # set in post init
-    qTable: dict[tuple[GameState, Action], float] = field(init=False)
-    nTable: dict[tuple[GameState, Action], int] = field(init=False)
+    qTable: dict[tuple[GameState, Action | None], float] = field(init=False)
+    nTable: dict[tuple[GameState, Action | None], int] = field(init=False)
 
     def __post_init__(self) -> None:
         self.qTable = {}
         self.nTable = {}
 
-    def search(self, state: GameState, adversary: Adversary) -> Action:
+    def search(self, state: GameState, agent: Agent, adversary: Adversary) -> Action:
         """
         Perform simulations and pick a next action given the current state.
         """
 
         # simulate forward a configured number of times
         for _ in range(self.maxIter):
-            self.simulate(state, adversary)
+            self.simulate(state, agent, adversary)
 
         # pick argmax from q table
         maxQ = float("-inf")
@@ -114,14 +114,14 @@ class MCTree:
 
         return maxAction
 
-    def simulate(self, state: GameState, adversary: Adversary) -> None:
+    def simulate(self, state: GameState, agent: Agent, adversary: Adversary) -> None:
         """
         Perform a simulation forward from the given state.
         """
 
         # choose first legal action
         action: Action | None = self.selectActionUCB(state)
-        path: list[tuple[GameState, Action]] = []
+        path: list[tuple[GameState, Action | None]] = []
         path.append((state, action))
 
         # simulate forward until a leaf node
@@ -135,7 +135,7 @@ class MCTree:
             path.append((state, action))
 
         # rollout from that leaf node
-        quality: float = self.rollout(state)
+        quality: float = self.rollout(state, agent, adversary)
 
         # back propagate the quality update
         for saPair in reversed(path):
