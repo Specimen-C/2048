@@ -123,7 +123,9 @@ class Agent:
     
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
-    def getAction(self, GameState, adversary):
+    def getAction(self, gameState: GameState, adversary):
+        
+        
         #if random agent just return a random move
         if (self.mode == "Random"):
             return random.choice(GameState.getLegalActions())
@@ -132,7 +134,8 @@ class Agent:
             if self.tree.root == None:
                 self.tree.setRoot(GameState, None)
             
-            return self.tree.search(20)
+            action =  self.tree.search(20)
+            
     
         # if (self.mode == "MonteCarlo"):
         #     return self.UCT(GameState, adversary)
@@ -429,8 +432,8 @@ class MCTree:
         
         self.exploration_factor: float = 0.5
         self.discount_factor: float = 1
-        self.depthLimit: int = 10
-        self.iterAmount: int = 30
+        self.depthLimit: int = 5
+        self.iterAmount: int = 10
         
         self.adversary: Adversary = Adversary(5)
         self.agent: Agent = agent
@@ -443,24 +446,30 @@ class MCTree:
         print("Simulating " + str(iterationLimit) + " number of moves")
         #Run simulate iterationLimit number of times
         while iterationLimit > 0:
+            print("Simulating... iteration = " + str(iterationLimit))
             self.simulate()
+            iterationLimit -= 1
         
         #Then pick a move (Argmax of quality table)
         maxQ = float('-inf')
         maxAction = None
         
-        for action in self.root.getLegalActions():
-            qVal = self.q_table.get((self.root, action))
+        for action in self.root[0].getLegalActions():
+            qVal = self.q_table.get((self.root, action), 0)
             if qVal > maxQ:
                 maxQ = qVal
                 maxAction = action
                 
         if maxAction is None:
             raise Exception("Dumbass why'd you call search on a loss state?? ")
+        
+        return maxAction
     
     #Add nodes to the tree
     #Simulate
     def simulate(self):
+        print("Simulating from the root")
+        
         #Start from the root
         state = self.root[0]
         action = random.choice(state.getLegalActions())
@@ -470,33 +479,40 @@ class MCTree:
         
         #Generate a random action until we find a leaf node
         while (state, action) in self.q_table:
+            #print("Checking out a new state action pair in our table")
             state = state.takeTurn(action, self.adversary)
             action = random.choice(state.getLegalActions())
             path.append((state, action))
         
+        print("Found a leaf node!")
+        
         #Rollout from that leaf node
-        quality: float = self.rollout(state, self)
+        quality: float = self.rollout(state)
         
         #Back propagate the quality update
         for saPair in reversed(path):
-            n = self.n_table[saPair]
-            self.q_table[saPair] = ((self.q_table[saPair] * n) + quality) / (n + 1)
+            n = self.n_table.get(saPair, 0)
+            self.q_table[saPair] = ((self.q_table.get(saPair, 0) * n) + quality) / (n + 1)
             self.n_table[saPair] = n + 1
     
     #Randomly move till the depth cutoff
     #Rollout
-    def rollout(self, root: GameState, agent: Agent) -> float:
+    def rollout(self, root: GameState) -> float:
+        #print("Rolling out!")
         #Randomly moves till depth cutoff or loss, returns quality score
         node = root
         depth = 0
         
-        while not node.isLoss() or depth > self.depthLimit:
+        while not node.isLoss() and depth < self.depthLimit:
+            print("Picking a move at random!")
             #Pick a move at random
             action = random.choices(node.getLegalActions())
             
             node = node.takeTurn(action, self.adversary)
             
-        return agent.evaluate(node)
+            depth += 1
+            
+        return self.agent.evaluate(node)
             
     
     #selectAction
