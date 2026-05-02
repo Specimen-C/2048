@@ -47,7 +47,7 @@ class Agent:
         """
 
         if state.isLoss():
-            return float(state.score) ** -1
+            return -((2.0**30) * (float(state.score) ** -1))
         else:
             return float(state.score)
 
