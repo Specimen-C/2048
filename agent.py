@@ -2,7 +2,7 @@
 import random
 from action import Action
 from datetime import datetime
-from gameState import GameState as gameState, Adversary
+from gameState import GameState, Adversary
 
 #for now, defines an agent that quite literally chooses a move at random
 class Agent:
@@ -22,14 +22,15 @@ class Agent:
         self.death = None                   #datetime obj
         self.mode = "Random"                #default make the agent be random
         self.depth = 10                    #default depth is 10
+        self.tree = MCTree(None, self)
 
     #returns a float, evaluates a given game state
-    def evaluate(self, gameState: gameState):
+    def evaluate(self, GameState: GameState):
         
         #Use negative exponential for score to balance diminishing returns with risk
         
         val = 0
-        board = gameState.board
+        board = GameState.board
         numTiles = 0
         sizeTiles = 0
         n = len(board)
@@ -47,13 +48,13 @@ class Agent:
 
         # Reward max tile in corner
         if (board[0][0] != None and board[0][0].value == maxtile):
-            val += gameState.score * 200
+            val += GameState.score * 200
         if (board[0][n - 1] != None and board[0][n - 1].value == maxtile):
-            val += gameState.score * 200
+            val += GameState.score * 200
         if (board[n - 1][0] != None and board[n - 1][0].value == maxtile):
-            val += gameState.score * 200
+            val += GameState.score * 200
         if (board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile):
-            val += gameState.score * 200
+            val += GameState.score * 200
 
         # Reward monotonicity: tiles should decrease as you move away from max tile
         # Check rows (left-to-right and right-to-left)
@@ -112,57 +113,63 @@ class Agent:
 
         # Incentivize empty tiles (more empty = better)
         emptyTiles = sizeTiles - numTiles
-        val += emptyTiles * gameState.score * 100000
+        val += emptyTiles * GameState.score * 100000
 
         # Penalty for full board
         if numTiles == sizeTiles:
             val -= 200
 
-        return val + gameState.score
+        return val + GameState.score
     
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
-    def getAction(self, gameState, adversary):
+    def getAction(self, GameState, adversary):
         #if random agent just return a random move
         if (self.mode == "Random"):
-            return random.choice(gameState.getLegalActions())
+            return random.choice(GameState.getLegalActions())
         
         if (self.mode == "MonteCarlo"):
-            return self.UCT(gameState, adversary)
+            if self.tree.root == None:
+                self.tree.setRoot(GameState, None)
+            
+            return self.tree.search(20)
+    
+        # if (self.mode == "MonteCarlo"):
+        #     return self.UCT(GameState, adversary)
 
-        #list of possible actions (legal)
-        Actions = gameState.getLegalActions()
+        # #list of possible actions (legal)
+        # Actions = GameState.getLegalActions()
 
-        #if there is no gamestate, return a random move
-        if (gameState == None):
-            return random.choice(Actions)
+        # #if there is no GameState, return a random move
+        # if (GameState == None):
+        #     return random.choice(Actions)
 
 
-        curBestEval = float('-inf')
-        act = None
+        # curBestEval = float('-inf')
+        # act = None
 
-        #for every legal action
-        for a in Actions:
-            successorDict = gameState.generateSuccessors(adversary)     #returns all possible successors for all actions
-            actionDict = successorDict[a]   #gets all possible successors for the given action,
+        # #for every legal action
+        # for a in Actions:
+        #     successorDict = GameState.generateSuccessors(adversary)     #returns all possible successors for all actions
+        #     actionDict = successorDict[a]   #gets all possible successors for the given action,
 
-            #actionDict = list[tuple(float, gameState)]
-            for states in actionDict:
+        #     #actionDict = list[tuple(float, GameState)]
+        #     for states in actionDict:
 
-                state = states[1]   #this is the gameState object
+        #         state = states[1]   #this is the GameState object
 
-                #This might be problematic, but we can go with this for now;
-                #calls the evaluation fuction, which returns a value of "how good" a game state is,
-                #   and multiplies it by the probbaility of that state happening
+        #         #This might be problematic, but we can go with this for now;
+        #         #calls the evaluation fuction, which returns a value of "how good" a game state is,
+        #         #   and multiplies it by the probbaility of that state happening
 
-                #problematic b/c some horrid state with chance of 100% might be chosen over something with a better outcome with lower probability
-                evalScore = self.evaluate(state) * states[0]
+        #         #problematic b/c some horrid state with chance of 100% might be chosen over something with a better outcome with lower probability
+        #         evalScore = self.evaluate(state) * states[0]
 
-                if (evalScore > curBestEval):
-                    curBestEval = evalScore
-                    act = a
+        #         if (evalScore > curBestEval):
+        #             curBestEval = evalScore
+        #             act = a
 
-        return act
+        # return act
 
 
     # returns the wall-clock time (float? or int ig idk) of an agent
@@ -209,7 +216,7 @@ class Agent:
         y = the discount factor
         """
         
-    def UCT(self, gameState: gameState, adversary: Adversary):
+    def UCT(self, GameState: GameState, adversary: Adversary):
         import math         #for sqrt and logs
         
         #general stuff we need for MCTS:
@@ -221,12 +228,12 @@ class Agent:
         d = self.depth
 
         #!!!!!!  Monte Carlo Tree Method helpers:
-        def A(s: gameState):
+        def A(s: GameState):
             #print("Legal Actions: ", s.getLegalActions())
             return s.getLegalActions()
         
         #explore randomly (choose moves to simulate at random for MCTS)
-        def pi_0(s: gameState):
+        def pi_0(s: GameState):
             actions = A(s)
             #print("ACTIONS: ", actions)
             if (len(actions) == 0):
@@ -234,7 +241,7 @@ class Agent:
             return random.choice(actions)
         
         # N(s, a) = visit count for taking action a from state s (for all actions a).
-        def N_s(s: gameState):
+        def N_s(s: GameState):
             tot = 0
             for a in A(s):
                 key = stateKey(s)
@@ -242,7 +249,7 @@ class Agent:
             return tot
         
         #makes a state hashable 
-        def stateKey(s: gameState):
+        def stateKey(s: GameState):
             key = []
 
             for row in s.board:
@@ -259,15 +266,15 @@ class Agent:
         # look up that action inside s.generateSuccessors(adversary), 
         # sample one successor according to the probabilities, and 
         # return (s_prime, r).
-        def G(s: gameState, a: Action):
+        def G(s: GameState, a: Action):
             actions = s.generateSuccessors(adversary)
-            actionStates = actions[a]           #list of tuples of (float, gameState)s
+            actionStates = actions[a]           #list of tuples of (float, GameState)s
             
             #the prob selected
             prob = random.uniform(0, 1)
             original_score = s.score
             counter = 0.0       #ramping counter for which bucket based on dist
-            newS = actionStates[-1][1]         #s'; default is just the LAST gameState (maybe 1 is never reached for ex)
+            newS = actionStates[-1][1]         #s'; default is just the LAST GameState (maybe 1 is never reached for ex)
             
             for state in actionStates:
                 curProb = state[0]
@@ -292,7 +299,7 @@ class Agent:
             return argmax_a Q(s, a)         #yeah
         """
 
-        def selectActions(state: gameState, depth: int):
+        def selectActions(state: GameState, depth: int):
             bestAction = None
             bestScore = -99999999
             key = stateKey(state)
@@ -329,7 +336,7 @@ class Agent:
             return q
         """
 
-        def Simulate(state: gameState, depth: int, pi_0):
+        def Simulate(state: GameState, depth: int, pi_0):
             if (depth == 0):
                 return self.evaluate(state)
             
@@ -390,7 +397,7 @@ class Agent:
             return r + y * Rollout(s', d - 1, pi_0)
         """
         #@returns a number, unsure if float or int
-        def Rollout(state: gameState, depth: int, pi_0):
+        def Rollout(state: GameState, depth: int, pi_0):
             if depth == 0:
                 return self.evaluate(state)
             
@@ -405,4 +412,93 @@ class Agent:
             (newS, r) = G(state, a)
             return r + gamma * Rollout(newS, depth - 1, pi_0)
         
-        return selectActions(gameState, self.depth)
+        return selectActions(GameState, self.depth)
+    
+
+
+class MCTree:
+    
+    #root : GameState
+    #q_table: dict[tuple[GameState, Action], float]
+    #n_table: dict[tuple[GameState, Action], int]
+    def __init__(self, root: tuple[GameState, Action] | None, agent: Agent):
+        self.root: tuple[GameState, Action] = root
+        self.q_table: dict[tuple[GameState, Action], float] = {}
+        self.n_table: dict[tuple[GameState, Action], int] = {}
+        
+        
+        self.exploration_factor: float = 0.5
+        self.discount_factor: float = 1
+        self.depthLimit: int = 10
+        self.iterAmount: int = 30
+        
+        self.adversary: Adversary = Adversary(5)
+        self.agent: Agent = agent
+        
+    def setRoot(self, state: GameState, action: Action | None):
+        self.root = (state, action)
+    
+    #Tree Search
+    def search(self, iterationLimit: int):
+        print("Simulating " + str(iterationLimit) + " number of moves")
+        #Run simulate iterationLimit number of times
+        while iterationLimit > 0:
+            self.simulate()
+        
+        #Then pick a move (Argmax of quality table)
+        maxQ = float('-inf')
+        maxAction = None
+        
+        for action in self.root.getLegalActions():
+            qVal = self.q_table.get((self.root, action))
+            if qVal > maxQ:
+                maxQ = qVal
+                maxAction = action
+                
+        if maxAction is None:
+            raise Exception("Dumbass why'd you call search on a loss state?? ")
+    
+    #Add nodes to the tree
+    #Simulate
+    def simulate(self):
+        #Start from the root
+        state = self.root[0]
+        action = random.choice(state.getLegalActions())
+        
+        path: list[tuple[GameState, Action]] = []
+        path.append((state, action))
+        
+        #Generate a random action until we find a leaf node
+        while (state, action) in self.q_table:
+            state = state.takeTurn(action, self.adversary)
+            action = random.choice(state.getLegalActions())
+            path.append((state, action))
+        
+        #Rollout from that leaf node
+        quality: float = self.rollout(state, self)
+        
+        #Back propagate the quality update
+        for saPair in reversed(path):
+            n = self.n_table[saPair]
+            self.q_table[saPair] = ((self.q_table[saPair] * n) + quality) / (n + 1)
+            self.n_table[saPair] = n + 1
+    
+    #Randomly move till the depth cutoff
+    #Rollout
+    def rollout(self, root: GameState, agent: Agent) -> float:
+        #Randomly moves till depth cutoff or loss, returns quality score
+        node = root
+        depth = 0
+        
+        while not node.isLoss() or depth > self.depthLimit:
+            #Pick a move at random
+            action = random.choices(node.getLegalActions())
+            
+            node = node.takeTurn(action, self.adversary)
+            
+        return agent.evaluate(node)
+            
+    
+    #selectAction
+        
+    

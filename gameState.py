@@ -356,6 +356,12 @@ class GameState:
                     return False
 
         return True
+    
+    def __hash__(self):
+        return hash((
+            tuple([tuple(r) for r in self.board]),
+            self.score,
+        ))
 
     #
     # helper methods
@@ -506,3 +512,5 @@ class GameState:
             line.append(None)
 
         return (line, score)
+    
+    

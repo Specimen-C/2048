@@ -1,4 +1,3 @@
-from agent import Agent
 from gameState import GameState
 from action import Action
 from random import choices
@@ -9,8 +8,8 @@ class MCTree:
     #root : GameState
     #q_table: dict[tuple[GameState, Action], float]
     #n_table: dict[tuple[GameState, Action], int]
-    def __init__(self, root: GameState):
-        self.root: GameState = root
+    def __init__(self, root: tuple[GameState, Action] | None):
+        self.root: tuple[GameState, Action] = root
         self.q_table: dict[tuple[GameState, Action], float] = {}
         self.n_table: dict[tuple[GameState, Action], int] = {}
         
@@ -20,7 +19,10 @@ class MCTree:
         self.depthLimit: int = 10
         self.iterAmount: int = 30
         
-        self.adversary: Adversary = 
+        self.adversary: Adversary = Adversary(5)
+        
+    def setRoot(self, state: GameState, action: Action | None):
+        self.root = (state, action)
     
     #Tree Search
     def search(self, iterationLimit: int):
