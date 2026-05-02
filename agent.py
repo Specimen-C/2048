@@ -212,8 +212,8 @@ class MCTree:
         
         self.exploration_factor: float = 0.5
         self.discount_factor: float = 1
-        self.depthLimit: int = 40
-        self.iterAmount: int = 100
+        self.depthLimit: int = 70
+        self.iterAmount: int = 200
         
         self.adversary: Adversary = Adversary(5)
         self.agent: Agent = agent
@@ -223,10 +223,10 @@ class MCTree:
     
     #Tree Search
     def search(self, iterationLimit: int):
-        print("Simulating " + str(iterationLimit) + " number of moves")
+        #print("Simulating " + str(iterationLimit) + " number of moves")
         #Run simulate iterationLimit number of times
         while iterationLimit > 0:
-            print("Simulating... iteration = " + str(iterationLimit))
+            #print("Simulating... iteration = " + str(iterationLimit))
             self.simulate()
             iterationLimit -= 1
         
@@ -235,10 +235,11 @@ class MCTree:
         maxAction = None
         
         for action in self.root[0].getLegalActions():
-            qVal = self.q_table.get((self.root, action), 0)
+            qVal = self.q_table.get((self.root[0], action), 0)
             if qVal > maxQ:
                 maxQ = qVal
                 maxAction = action
+            
                 
         if maxAction is None:
             raise Exception("Dumbass why'd you call search on a loss state?? ")
@@ -248,11 +249,11 @@ class MCTree:
     #Add nodes to the tree
     #Simulate
     def simulate(self):
-        print("Simulating from the root")
+        #print("Simulating from the root")
         
         #Start from the root
         state = self.root[0]
-        print("State = " + str(state) + " and has type " + str(type(state)))
+        #print("State = " + str(state) + " and has type " + str(type(state)))
         action = random.choice(state.getLegalActions())
         
         path: list[tuple[GameState, Action]] = []
@@ -263,12 +264,12 @@ class MCTree:
             #print("Checking out a new state action pair in our table")
             state = state.takeTurn(action, self.adversary)
             if len(state.getLegalActions()) != 0:
-                action = random.choice(state.getLegalActions())
+                action = self.selectActionUCB(state)
             else :
                 action = None
             path.append((state, action))
         
-        print("Found a leaf node!")
+        #print("Found a leaf node!")
         
         #Rollout from that leaf node
         quality: float = self.rollout(state)
@@ -278,6 +279,37 @@ class MCTree:
             n = self.n_table.get(saPair, 0)
             self.q_table[saPair] = ((self.q_table.get(saPair, 0) * n) + quality) / (n + 1)
             self.n_table[saPair] = n + 1
+            
+    def selectActionUCB(self, state: GameState) -> Action:
+        """Select action using Upper Confidence Bound (UCB1)"""
+        import math
+        
+        legalActions = state.getLegalActions()
+        
+        # If any action hasn't been tried yet, try it (exploration)
+        for action in legalActions:
+            if (state, action) not in self.n_table:
+                return action
+        
+        # Otherwise, use UCB formula
+        bestScore = float('-inf')
+        bestAction = None
+        
+        # Total visits to this state (sum of all action visits)
+        totalVisits = sum(self.n_table.get((state, a), 0) for a in legalActions)
+        
+        for action in legalActions:
+            q = self.q_table.get((state, action), 0)  # Exploitation term
+            n = self.n_table.get((state, action), 1)   # Avoid division by zero
+            
+            # UCB1 formula: Q(s,a) + c * sqrt(ln(N) / n(s,a))
+            ucb_score = q + self.exploration_factor * math.sqrt(math.log(totalVisits + 1) / n)
+            
+            if ucb_score > bestScore:
+                bestScore = ucb_score
+                bestAction = action
+        
+        return bestAction
     
     #Randomly move till the depth cutoff
     #Rollout
@@ -288,7 +320,7 @@ class MCTree:
         depth = 0
         
         while not node.isLoss() and depth < self.depthLimit:
-            print("Picking a move at random!")
+            #print("Picking a move at random!")
             #Pick a move at random
             action = random.choice(node.getLegalActions())
             
