@@ -25,12 +25,13 @@ class Agent:
         self.tree = MCTree(None, self)
 
     #returns a float, evaluates a given game state
-    def evaluate(self, GameState: GameState):
+    def evaluate(self, gameState: GameState):
         
         #Use negative exponential for score to balance diminishing returns with risk
+        from math import e
         
         val = 0
-        board = GameState.board
+        board = gameState.board
         numTiles = 0
         sizeTiles = 0
         n = len(board)
@@ -48,13 +49,13 @@ class Agent:
 
         # Reward max tile in corner
         if (board[0][0] != None and board[0][0].value == maxtile):
-            val += GameState.score * 200
+            val += gameState.score * 200
         if (board[0][n - 1] != None and board[0][n - 1].value == maxtile):
-            val += GameState.score * 200
+            val += gameState.score * 200
         if (board[n - 1][0] != None and board[n - 1][0].value == maxtile):
-            val += GameState.score * 200
+            val += gameState.score * 200
         if (board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile):
-            val += GameState.score * 200
+            val += gameState.score * 200
 
         # Reward monotonicity: tiles should decrease as you move away from max tile
         # Check rows (left-to-right and right-to-left)
@@ -113,13 +114,13 @@ class Agent:
 
         # Incentivize empty tiles (more empty = better)
         emptyTiles = sizeTiles - numTiles
-        val += emptyTiles * GameState.score * 100000
+        val += emptyTiles * gameState.score * 100000
 
         # Penalty for full board
         if numTiles == sizeTiles:
             val -= 200
 
-        return val + GameState.score
+        return val + gameState.score
     
     #returns an action given a game state. Use eval function.
     #I have to add an adversary bc otherwise i cant use the generate successors function properly
@@ -211,7 +212,7 @@ class MCTree:
         
         self.exploration_factor: float = 0.5
         self.discount_factor: float = 1
-        self.depthLimit: int = 10
+        self.depthLimit: int = 40
         self.iterAmount: int = 100
         
         self.adversary: Adversary = Adversary(5)
@@ -289,7 +290,7 @@ class MCTree:
         while not node.isLoss() and depth < self.depthLimit:
             print("Picking a move at random!")
             #Pick a move at random
-            action = random.choices(node.getLegalActions())
+            action = random.choice(node.getLegalActions())
             
             node = node.takeTurn(action, self.adversary)
             
