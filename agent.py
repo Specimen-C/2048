@@ -25,7 +25,7 @@ class Agent:
         self.tree = MCTree(None, self)
 
     #returns a float, evaluates a given game state
-    def evaluate(self, gameState: GameState):
+    def evaluate(self, gameState: gameState):
         val = 0
         board = gameState.board
         numTiles = 0
