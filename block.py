@@ -42,6 +42,10 @@ single_game_max_tile = 0
 
 
 def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
+    """
+    Given a tile, return the background and foreground color.
+    """
+
     # no tile
     if tile is None:
         return ((204, 193, 180), (204, 193, 180))
@@ -133,8 +137,13 @@ class AppConfig:
     Height of the display.
     """
 
+    TIME_BETWEEN_MOVES: float | None
+    """
+    Minimum number of seconds between moves, or None to disable limit.
+    """
+
     @staticmethod
-    def new(board_n: int) -> AppConfig:
+    def new(board_n: int, time_between_moves: float | None) -> AppConfig:
         # constants
         BOARD_N: int = board_n
         CELL_L: int = 100
@@ -146,6 +155,7 @@ class AppConfig:
         WINDOW_PADDING: int = 10
         WINDOW_W: int = BOARD_L + (2 * WINDOW_PADDING)
         WINDOW_H: int = BOARD_L + STATUS_H + (3 * WINDOW_PADDING)
+        TIME_BETWEEN_MOVES: float | None = time_between_moves
 
         return AppConfig(
             BOARD_N=BOARD_N,
@@ -158,6 +168,7 @@ class AppConfig:
             WINDOW_PADDING=WINDOW_PADDING,
             WINDOW_W=WINDOW_W,
             WINDOW_H=WINDOW_H,
+            TIME_BETWEEN_MOVES=TIME_BETWEEN_MOVES,
         )
 
 
@@ -220,25 +231,42 @@ class AppState:
     The amount of time in seconds since the last frame was rendered.
     """
 
-    game: GameState
-    """
-    The 2048 game's board state.
-    """
-
     clock: Clock
     """
     The game clock.
     """
 
-    player: bool
+    game: GameState
     """
-    True when there is a player, and false when the agent is playing.
+    The 2048 game's board state.
     """
 
-    adversaryK: int
+    agent: Agent | None
     """
-    Represents the number of worst options the adversary can choose from.
+    The agent playing 2048. When None, moves are made manually by the player.
     """
+
+    adversary: Adversary
+    """
+    The adversary which places blocks on the 2048 board.
+    """
+
+    move_timer: float
+    """
+    The time since last move.
+    """
+
+    @staticmethod
+    def new(cfg: AppConfig, agent: Agent | None, adversary: Adversary) -> AppState:
+        return AppState(
+            running=True,
+            dt=0.0,
+            clock=Clock(),
+            game=GameState.startState(cfg.BOARD_N, adversary),
+            agent=agent,
+            adversary=adversary,
+            move_timer=0.0,
+        )
 
 
 @dataclass(kw_only=True)
@@ -268,12 +296,22 @@ class App:
     """
 
     @staticmethod
-    def new(board_n: int, player: bool, k: int) -> App:
+    def new(
+        board_n: int,
+        player: bool,
+        k: int,
+        max_depth: int,
+        max_iter: int,
+        time_between_moves: int | None,
+    ) -> App:
         # init pygame
         pygame.init()
 
         # init config
-        cfg = AppConfig.new(board_n=board_n)
+        cfg = AppConfig.new(
+            board_n=board_n,
+            time_between_moves=time_between_moves,
+        )
 
         # init context
         ctx = AppContext.new(
@@ -282,13 +320,12 @@ class App:
         )
 
         # init state
-        state = AppState(
-            running=True,
-            clock=pygame.time.Clock(),
-            dt=0.0,
-            game=GameState.startState(cfg.BOARD_N, Adversary(k)),
-            player=player,
-            adversaryK=k,
+        state = AppState.new(
+            cfg=cfg,
+            agent=Agent(maxDepth=max_depth, maxIter=max_iter, name="Agent")
+            if not player
+            else None,
+            adversary=Adversary(k),
         )
 
         # window's surface
@@ -302,54 +339,43 @@ class App:
         )
 
     def run(self) -> None:
-
-        # instantiate an agent instance (Random for now):
-        agent = Agent(maxDepth=40, maxIter=40, name="Agent")
-        adversary = Adversary(app.state.adversaryK)
-        moveTimer = 0.0
-        moveDelay = 0
-
         # game loop
         while self.state.running:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
 
-            if self.state.player:
-                # Process pygame events
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        self.state.running = False
-                    elif event.type == pygame.KEYDOWN:
-                        # print("User pressed key")
-                        user_action = KEYBINDS.get(event.key)
+            # update move timer
+            self.state.move_timer += self.state.dt
+
+            # handle events
+            for event in pygame.event.get():
+                # exit
+                if event.type == pygame.QUIT:
+                    self.state.running = False
+                # keypress (move)
+                elif event.type == pygame.KEYDOWN:
+                    user_move = KEYBINDS.get(event.key)
+                    if user_move and not self.state.agent:
                         self.state.game = self.state.game.takeTurn(
-                            user_action, adversary
+                            user_move,
+                            self.state.adversary,
                         )
 
-            else:
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        self.state.running = False
-                # play game based on action from agent
-                if not self.state.game.isLoss():
-                    moveTimer += self.state.dt
+            # do agent action
+            if self.state.agent and (
+                not self.cfg.TIME_BETWEEN_MOVES
+                or self.state.move_timer >= self.cfg.TIME_BETWEEN_MOVES
+            ):
+                self.state.move_timer = 0.0
+                action = self.state.agent.getAction(
+                    self.state.game,
+                    self.state.adversary,
+                )
+                self.state.game = self.state.game.takeTurn(action, self.state.adversary)
 
-                    if moveTimer >= moveDelay:
-                        moveTimer = 0.0
-                        action = agent.getAction(self.state.game, adversary)
-
-                        print("CHOSEN ACTION: ", action)
-
-                        if action is not None:
-                            self.state.game = self.state.game.takeTurn(
-                                action, adversary
-                            )
-
-            # Handle a loss
+            # check for loss
             if self.state.game.isLoss():
-                print("You lost\nFinal State = ")
-                self.state.game.printGameState()
-                self.state.running = False
+                self.state.agent = None
 
             # fill screen with background
             self.display_surf.fill(COLOR_BG)
@@ -413,13 +439,6 @@ class App:
             # draw to display
             pygame.display.flip()
 
-        self.state.running = True
-
-        while self.state.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.state.running = False
-        self.set_print_values()
         # exit game
         pygame.quit()
 
@@ -625,7 +644,14 @@ if __name__ == "__main__":
 
     # create & run app
     if not args.nograph:
-        app = App.new(board_n=args.board_size, player=args.player, k=args.k)
+        app = App.new(
+            board_n=args.board_size,
+            player=args.player,
+            k=args.k,
+            max_depth=1,
+            max_iter=1,
+            time_between_moves=None,
+        )
     else:
         app = NoGraphicsApp.new(board_n=args.board_size, k=args.k)
     app.run()
