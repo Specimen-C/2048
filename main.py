@@ -2,7 +2,7 @@
 from argparse import ArgumentParser, Namespace
 
 # local item imports
-from block import App
+from app import App
 from test import TestHarness
 
 
