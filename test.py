@@ -59,7 +59,15 @@ class TestHarness:
         scores: list[int] = [game.score for game in completed_games]
         max_tiles: list[int] = [game.highest_tile for game in completed_games]
 
-        print()
+        print("---")
+        print("Options:")
+        print(f"Board Size: {self.board_size}")
+        print(f"Adversary K: {self.adversary_k}")
+        print(f"Max Depth: {self.max_depth}")
+        print(f"Max Iterations: {self.max_iter}")
+        print("---")
+        print("Stats:")
+        print(f"Runs: {self.num_runs}")
         print(f"Avg Score: {sum(scores) / len(scores)}")
         print(f"Max Score: {max(scores)}")
         print(f"Min Score: {min(scores)}")
