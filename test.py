@@ -1,10 +1,76 @@
+# module imports
+import json
+
 # item imports
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
 
 # local item imports
 from game import AgentGame
 from gameState import Adversary
 from agent import Agent
+
+
+@dataclass
+class TestResult:
+    # stats
+    board_size: int
+    adversary_k: int
+    max_depth: int
+    max_iter: int
+    num_runs: int
+    avg_score: float
+    max_score: int
+    min_score: int
+    max_tile: int
+
+    # games
+    game_scores: list[int]
+
+    @staticmethod
+    def new(
+        board_size: int,
+        adversary_k: int,
+        max_depth: int,
+        max_iter: int,
+        num_runs: int,
+        games: list[AgentGame],
+    ) -> TestResult:
+        scores: list[int] = [game.score for game in games]
+        max_tiles: list[int] = [game.highest_tile for game in games]
+        return TestResult(
+            board_size=board_size,
+            adversary_k=adversary_k,
+            max_depth=max_depth,
+            max_iter=max_iter,
+            num_runs=num_runs,
+            avg_score=sum(scores) / len(scores),
+            max_score=max(scores),
+            min_score=min(scores),
+            max_tile=max(max_tiles),
+            game_scores=scores,
+        )
+
+    def save(self) -> None:
+        testfile = Path(f"tests/{datetime.now().strftime('%Y-%m-%dT%H%M%S')}.json")
+        testfile.parent.mkdir(parents=True, exist_ok=True)
+        with open(testfile, "x") as file:
+            json.dump(asdict(self), file)
+
+    def print(self) -> None:
+        print("Options:")
+        print(f"Board Size: {self.board_size}")
+        print(f"Adversary K: {self.adversary_k}")
+        print(f"Max Depth: {self.max_depth}")
+        print(f"Max Iterations: {self.max_iter}")
+        print("---")
+        print("Stats:")
+        print(f"Runs: {self.num_runs}")
+        print(f"Avg Score: {self.avg_score}")
+        print(f"Max Score: {self.max_score}")
+        print(f"Min Score: {self.min_score}")
+        print(f"Overall Max Tile Value: {self.max_tile}")
 
 
 @dataclass(kw_only=True)
@@ -56,19 +122,13 @@ class TestHarness:
             completed_games.append(game)
 
         # compute and print final outputs
-        scores: list[int] = [game.score for game in completed_games]
-        max_tiles: list[int] = [game.highest_tile for game in completed_games]
-
-        print("---")
-        print("Options:")
-        print(f"Board Size: {self.board_size}")
-        print(f"Adversary K: {self.adversary_k}")
-        print(f"Max Depth: {self.max_depth}")
-        print(f"Max Iterations: {self.max_iter}")
-        print("---")
-        print("Stats:")
-        print(f"Runs: {self.num_runs}")
-        print(f"Avg Score: {sum(scores) / len(scores)}")
-        print(f"Max Score: {max(scores)}")
-        print(f"Min Score: {min(scores)}")
-        print(f"Overall Max Tile Value: {max(max_tiles)}")
+        res = TestResult.new(
+            self.board_size,
+            self.adversary_k,
+            self.max_depth,
+            self.max_iter,
+            self.num_runs,
+            completed_games,
+        )
+        res.print()
+        res.save()
