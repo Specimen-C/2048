@@ -1,5 +1,4 @@
 # module imports
-import argparse
 import pygame
 
 # item imports
@@ -292,19 +291,19 @@ class App:
 
     @staticmethod
     def new(
-        board_n: int,
+        board_size: int,
         player: bool,
-        k: int,
+        adversary_k: int,
         max_depth: int,
         max_iter: int,
-        time_between_moves: int | None,
+        time_between_moves: float | None,
     ) -> App:
         # init pygame
         pygame.init()
 
         # init config
         cfg = AppConfig.new(
-            board_n=board_n,
+            board_n=board_size,
             time_between_moves=time_between_moves,
         )
 
@@ -320,7 +319,7 @@ class App:
             agent=Agent(maxDepth=max_depth, maxIter=max_iter, name="Agent")
             if not player
             else None,
-            adversary=Adversary(k),
+            adversary=Adversary(adversary_k),
         )
 
         # window's surface
@@ -367,6 +366,11 @@ class App:
             # check for loss
             if self.state.game.isLoss():
                 self.state.running = False
+
+        # print out loss info
+        print("Game Over!")
+        print(f"Score: {self.state.game.score}")
+        print(f"Highest Tile: {self.state.game.highest_tile}")
 
         # secondary game loop (after loss)
         self.state.running = True
@@ -486,27 +490,6 @@ class App:
         # draw cell onto board
         board.blit(cell, (cell_x, cell_y))
 
-    def set_print_values(self):
-        global single_game_score
-        single_game_score = self.state.game.score
-
-        global single_game_max_tile
-        single_game_max_tile = 0
-        for r in range(len(self.state.game.board)):
-            for c in range(len(self.state.game.board[r])):
-                if (
-                    self.state.game.board[r][c] != None
-                    and self.state.game.board[r][c].value > single_game_max_tile
-                ):
-                    single_game_max_tile = self.state.game.board[r][c].value
-
-    def print_results(self):
-        print()
-        global single_game_score
-        global single_game_max_tile
-        print(f"Game Score: {single_game_score}")
-        print(f"Maximum Tile Value: {single_game_max_tile}")
-
 
 class NoGraphicsApp:
     #######################
@@ -608,60 +591,3 @@ class NoGraphicsApp:
 
         return
         ##########################
-
-
-# when run as script
-if __name__ == "__main__":
-    # create argparser
-    parser = argparse.ArgumentParser(
-        prog="block.py",
-        description="A 2048 game demo",
-    )
-    parser.add_argument(
-        "-n",
-        "--board-size",
-        help="size of the NxN board",
-        default=4,
-        type=int,
-    )
-    parser.add_argument(
-        "-p",
-        "--player",
-        help="Use flag -p to allow player control",
-        default=False,
-        type=bool,
-    )
-    parser.add_argument(
-        "-k",
-        help="Adversary picks randomly from top k worst placements",
-        default=5,
-        type=int,
-    )
-    parser.add_argument(
-        "-g",
-        "--no-graphics",
-        help="Use flag --no-graphics for a no graphics simulation",
-        dest="nograph",
-        action="store_true",
-    )
-
-    # parse arguments
-    args = parser.parse_args()
-
-    # create & run app
-    if not args.nograph:
-        app = App.new(
-            board_n=args.board_size,
-            player=args.player,
-            k=args.k,
-            max_depth=1,
-            max_iter=1,
-            time_between_moves=None,
-        )
-    else:
-        app = NoGraphicsApp.new(board_n=args.board_size, k=args.k)
-    app.run()
-
-    # Post-Game results:
-    if not args.nograph:
-        app.print_results()

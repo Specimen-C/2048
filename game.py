@@ -26,6 +26,10 @@ class Game(ABC):
     def board(self) -> list[list[Tile | None]]:
         return self.state.board
 
+    @property
+    def highest_tile(self) -> int:
+        return max([tile.value for list in self.state.board for tile in list if tile])
+
     def isLoss(self) -> bool:
         return self.state.isLoss()
 
