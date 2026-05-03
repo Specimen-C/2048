@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-n",
         "--board-size",
-        help="size of the NxN board",
+        help="size of the NxN board (default: 4)",
         default=4,
         type=int,
         dest="board_size",
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-k",
         "--adversary-k",
-        help="make adversary pick randomly from top k worst placements",
+        help="make adversary pick randomly from top k worst placements (default: 5)",
         default=5,
         type=int,
         dest="adversary_k",
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--max-depth",
-        help="max depth to rollout",
+        help="max depth to rollout (default: 10)",
         default=10,
         type=int,
         dest="max_depth",
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-i",
         "--max-iter",
-        help="max number of iterations when simulating",
+        help="max number of iterations when simulating (default: 50)",
         default=50,
         type=int,
         dest="max_iter",
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     run_parser.add_argument(
         "-t",
         "--time-between-moves",
-        help="max number of iterations when simulating",
+        help="min number of seconds between turns (default: none)",
         default=None,
         type=float,
         dest="time_between_moves",
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     test_parser.add_argument(
         "-r",
         "--num-runs",
-        help="number of tests to perform",
+        help="number of tests to perform (default: 5)",
         default=5,
         type=int,
         dest="num_runs",
