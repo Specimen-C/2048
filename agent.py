@@ -41,15 +41,98 @@ class Agent:
             maxIter=maxIter,
         )
 
-    def evaluate(self, state: GameState) -> float:
-        """
-        Score a given gamestate.
-        """
+    def evaluate(self, gameState: GameState):
+        val = 0
+        board = gameState.board
+        numTiles = 0
+        sizeTiles = 0
+        n = len(board)
 
-        if state.isLoss():
-            return -((2.0**30) * (float(state.score) ** -1))
-        else:
-            return float(state.score)
+        # find the max tile in board
+        maxtile = 0
+        for r in range(n):
+            for c in range(n):
+                tile = board[r][c]
+                if tile != None and tile.value > maxtile:
+                    maxtile = tile.value
+                if tile != None:
+                    numTiles += 1
+                sizeTiles += 1
+
+        # Reward max tile in corner
+        if board[0][0] != None and board[0][0].value == maxtile:
+            val += gameState.score * 200
+        if board[0][n - 1] != None and board[0][n - 1].value == maxtile:
+            val += gameState.score * 200
+        if board[n - 1][0] != None and board[n - 1][0].value == maxtile:
+            val += gameState.score * 200
+        if board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile:
+            val += gameState.score * 200
+
+        # Reward monotonicity: tiles should decrease as you move away from max tile
+        # Check rows (left-to-right and right-to-left)
+        for r in range(n):
+            for c in range(n - 1):
+                left = board[r][c].value if board[r][c] != None else 0
+                right = board[r][c + 1].value if board[r][c + 1] != None else 0
+                if left >= right:
+                    val += 1000
+                if right >= left:
+                    val += 1000
+
+        # Check columns (top-to-bottom and bottom-to-top)
+        for c in range(n):
+            for r in range(n - 1):
+                top = board[r][c].value if board[r][c] != None else 0
+                bottom = board[r + 1][c].value if board[r + 1][c] != None else 0
+                if top >= bottom:
+                    val += 1000
+                if bottom >= top:
+                    val += 1000
+
+        # Penalize trapped tiles (tiles not adjacent to similar values)
+        for r in range(n):
+            for c in range(n):
+                tile = board[r][c]
+                if tile == None:
+                    continue
+
+                # Check if this tile has any mergeable neighbors
+                hasMatchingNeighbor = False
+                neighbors = []
+
+                # Check all 4 directions
+                if r > 0:  # Up
+                    neighbors.append(board[r - 1][c])
+                if r < n - 1:  # Down
+                    neighbors.append(board[r + 1][c])
+                if c > 0:  # Left
+                    neighbors.append(board[r][c - 1])
+                if c < n - 1:  # Right
+                    neighbors.append(board[r][c + 1])
+
+                # Check if any neighbor is same value (can merge) or empty (can move)
+                for neighbor in neighbors:
+                    if neighbor == None:  # Empty space means not trapped
+                        hasMatchingNeighbor = True
+                        break
+                    if neighbor.value == tile.value:  # Can merge
+                        hasMatchingNeighbor = True
+                        break
+
+                # Penalize trapped tiles (bigger tiles get bigger penalties)
+                if not hasMatchingNeighbor:
+                    val -= tile.value * 0.5  # Scale penalty with tile value
+
+        # Incentivize empty tiles (more empty = better)
+        emptyTiles = sizeTiles - numTiles
+        val += emptyTiles * gameState.score * 100000
+
+        # Penalty for full board
+        if numTiles == sizeTiles:
+            val -= 200
+
+        return val + gameState.score
 
     def getAction(self, state: GameState, adversary: Adversary) -> Action:
         """
@@ -78,7 +161,7 @@ class Agent:
 @dataclass(kw_only=True)
 class MCTree:
     # values with defaults
-    explorationFactor: float = 0.5
+    explorationFactor: float = 1.414
     maxDepth: int = 30
     maxIter: int = 100
 
@@ -94,6 +177,9 @@ class MCTree:
         """
         Perform simulations and pick a next action given the current state.
         """
+        
+        self.qTable = {}
+        self.nTable = {}
 
         # simulate forward a configured number of times
         for _ in range(self.maxIter):

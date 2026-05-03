@@ -320,17 +320,46 @@ class GameState:
         return (len(self.getLegalActions()) == 0)
 
 
+    def _lineWouldChange(self, line: list) -> bool:
+        """
+        Check if a merge operation would change this line, without
+        actually performing it.
+        """
+        seen_empty = False
+        prev_value = None
+
+        for tile in line:
+            if tile is None:
+                seen_empty = True
+            else:
+                # A tile can slide into a preceding empty space
+                if seen_empty:
+                    return True
+                # Two adjacent tiles can merge
+                if prev_value is not None and prev_value == tile.value:
+                    return True
+                prev_value = tile.value
+
+        return False
+
     def getLegalActions(self) -> list[Action]:
         legalActions: list[Action] = []
 
         for action in Action:
-            #print("Checking action" + str(action))
-            tempState = self._move(action)
-            if tempState != self:
-                legalActions.append(action)
+            match action:
+                case Action.LEFT:
+                    if any(self._lineWouldChange(self.board[r]) for r in range(self.n)):
+                        legalActions.append(action)
+                case Action.RIGHT:
+                    if any(self._lineWouldChange(reversed(self.board[r])) for r in range(self.n)):
+                        legalActions.append(action)
+                case Action.UP:
+                    if any(self._lineWouldChange(self.board[r][c] for r in range(self.n)) for c in range(self.n)):
+                        legalActions.append(action)
+                case Action.DOWN:
+                    if any(self._lineWouldChange(self.board[r][c] for r in range(self.n - 1, -1, -1)) for c in range(self.n)):
+                        legalActions.append(action)
 
-
-        #print("LegalActions = " + str(legalActions))
         return legalActions
 
     def printGameState(self) -> None:
