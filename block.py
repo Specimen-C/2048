@@ -8,6 +8,7 @@ from pygame import Clock, Font, Surface
 
 # local imports
 from action import Action
+from game import AgentGame, PlayerGame
 from gameState import GameState, Adversary
 from tile import Tile
 from agent import Agent
@@ -236,19 +237,9 @@ class AppState:
     The game clock.
     """
 
-    game: GameState
+    game: AgentGame | PlayerGame
     """
-    The 2048 game's board state.
-    """
-
-    agent: Agent | None
-    """
-    The agent playing 2048. When None, moves are made manually by the player.
-    """
-
-    adversary: Adversary
-    """
-    The adversary which places blocks on the 2048 board.
+    The current game being rendered.
     """
 
     move_timer: float
@@ -258,13 +249,17 @@ class AppState:
 
     @staticmethod
     def new(cfg: AppConfig, agent: Agent | None, adversary: Adversary) -> AppState:
+        game = (
+            AgentGame.new(cfg.BOARD_N, agent, adversary)
+            if agent
+            else PlayerGame.new(cfg.BOARD_N, adversary)
+        )
+
         return AppState(
             running=True,
             dt=0.0,
             clock=Clock(),
-            game=GameState.startState(cfg.BOARD_N, adversary),
-            agent=agent,
-            adversary=adversary,
+            game=game,
             move_timer=0.0,
         )
 
@@ -339,7 +334,7 @@ class App:
         )
 
     def run(self) -> None:
-        # game loop
+        # main game loop
         while self.state.running:
             # update time delta
             self.state.dt = self.state.clock.tick(60) / 1000
@@ -355,92 +350,102 @@ class App:
                 # keypress (move)
                 elif event.type == pygame.KEYDOWN:
                     user_move = KEYBINDS.get(event.key)
-                    if user_move and not self.state.agent:
-                        self.state.game = self.state.game.takeTurn(
-                            user_move,
-                            self.state.adversary,
-                        )
+                    if user_move and isinstance(self.state.game, PlayerGame):
+                        self.state.game.move(user_move)
 
             # do agent action
-            if self.state.agent and (
+            if isinstance(self.state.game, AgentGame) and (
                 not self.cfg.TIME_BETWEEN_MOVES
                 or self.state.move_timer >= self.cfg.TIME_BETWEEN_MOVES
             ):
                 self.state.move_timer = 0.0
-                action = self.state.agent.getAction(
-                    self.state.game,
-                    self.state.adversary,
-                )
-                self.state.game = self.state.game.takeTurn(action, self.state.adversary)
+                self.state.game.advance()
+
+            # render
+            self._render()
 
             # check for loss
             if self.state.game.isLoss():
-                self.state.agent = None
+                self.state.running = False
 
-            # fill screen with background
-            self.display_surf.fill(COLOR_BG)
+        # secondary game loop (after loss)
+        self.state.running = True
+        while self.state.running:
+            # handle events
+            for event in pygame.event.get():
+                # exit
+                if event.type == pygame.QUIT:
+                    self.state.running = False
 
-            # draw status area & score
-            status = Surface((self.cfg.BOARD_L, self.cfg.STATUS_H))
-            status.fill(COLOR_BG)
-            score = self.ctx.score_font.render(
-                str(self.state.game.score),
-                True,
-                COLOR_FG_DARK,
-            )
-            score_rect = score.get_rect(
-                center=(self.cfg.BOARD_L / 2, self.cfg.STATUS_H / 2)
-            )
-            status.blit(score, score_rect)
-
-            # draw status area onto screen
-            self.display_surf.blit(
-                status,
-                (
-                    self.cfg.WINDOW_PADDING,
-                    self.cfg.WINDOW_PADDING,
-                    # self.cfg.BOARD_L + (2 * self.cfg.WINDOW_PADDING),
-                ),
-            )
-
-            # draw board
-            board = Surface((self.cfg.BOARD_L, self.cfg.BOARD_L))
-            board.fill(COLOR_BG)
-            pygame.draw.rect(
-                board,
-                COLOR_BOARD_BG,
-                (0, 0, self.cfg.BOARD_L, self.cfg.BOARD_L),
-                border_radius=8,
-            )
-            inner_board = Surface(
-                (self.cfg.CELL_L * self.cfg.BOARD_N, self.cfg.CELL_L * self.cfg.BOARD_N)
-            )
-
-            # draw blocks onto board
-            for row_i in range(self.state.game.n):
-                for col_i in range(self.state.game.n):
-                    self._draw_block(
-                        inner_board,
-                        self.state.game.board[row_i][col_i],
-                        row_i,
-                        col_i,
-                    )
-
-            # draw inner board to board and board onto screen
-            board.blit(inner_board, (self.cfg.BOARD_PADDING, self.cfg.BOARD_PADDING))
-            self.display_surf.blit(
-                board,
-                (
-                    self.cfg.WINDOW_PADDING,
-                    self.cfg.STATUS_H + (2 * self.cfg.WINDOW_PADDING),
-                ),
-            )
-
-            # draw to display
-            pygame.display.flip()
-
-        # exit game
+        # exit
         pygame.quit()
+
+    def _render(self) -> None:
+        """
+        Render the current board on the screen.
+        """
+
+        # fill screen with background
+        self.display_surf.fill(COLOR_BG)
+
+        # draw status area & score
+        status = Surface((self.cfg.BOARD_L, self.cfg.STATUS_H))
+        status.fill(COLOR_BG)
+        score = self.ctx.score_font.render(
+            str(self.state.game.score),
+            True,
+            COLOR_FG_DARK,
+        )
+        score_rect = score.get_rect(
+            center=(self.cfg.BOARD_L / 2, self.cfg.STATUS_H / 2)
+        )
+        status.blit(score, score_rect)
+
+        # draw status area onto screen
+        self.display_surf.blit(
+            status,
+            (
+                self.cfg.WINDOW_PADDING,
+                self.cfg.WINDOW_PADDING,
+                # self.cfg.BOARD_L + (2 * self.cfg.WINDOW_PADDING),
+            ),
+        )
+
+        # draw board
+        board = Surface((self.cfg.BOARD_L, self.cfg.BOARD_L))
+        board.fill(COLOR_BG)
+        pygame.draw.rect(
+            board,
+            COLOR_BOARD_BG,
+            (0, 0, self.cfg.BOARD_L, self.cfg.BOARD_L),
+            border_radius=8,
+        )
+        inner_board = Surface(
+            (self.cfg.CELL_L * self.cfg.BOARD_N, self.cfg.CELL_L * self.cfg.BOARD_N)
+        )
+
+        # draw blocks onto board
+        for row_i in range(self.state.game.n):
+            for col_i in range(self.state.game.n):
+                self._draw_block(
+                    inner_board,
+                    self.state.game.board[row_i][col_i],
+                    row_i,
+                    col_i,
+                )
+
+        # draw inner board to board and board onto screen
+        board.blit(inner_board, (self.cfg.BOARD_PADDING, self.cfg.BOARD_PADDING))
+        self.display_surf.blit(
+            board,
+            (
+                self.cfg.WINDOW_PADDING,
+                self.cfg.STATUS_H + (2 * self.cfg.WINDOW_PADDING),
+            ),
+        )
+
+        # draw to display
+        pygame.display.flip()
 
     def _draw_block(
         self,
@@ -449,6 +454,10 @@ class App:
         row: int,
         col: int,
     ) -> None:
+        """
+        Draw a single block to the screen.
+        """
+
         # block
         cell_x = col * self.cfg.CELL_L
         cell_y = row * self.cfg.CELL_L
@@ -615,7 +624,6 @@ if __name__ == "__main__":
         default=4,
         type=int,
     )
-
     parser.add_argument(
         "-p",
         "--player",
@@ -623,14 +631,12 @@ if __name__ == "__main__":
         default=False,
         type=bool,
     )
-
     parser.add_argument(
         "-k",
         help="Adversary picks randomly from top k worst placements",
         default=5,
         type=int,
     )
-
     parser.add_argument(
         "-g",
         "--no-graphics",
