@@ -20,6 +20,7 @@ class TestResult:
     adversary_k: int
     max_depth: int
     max_iter: int
+    exploration_factor: float
     num_runs: int
     avg_score: float
     max_score: int
@@ -36,6 +37,7 @@ class TestResult:
         adversary_k: int,
         max_depth: int,
         max_iter: int,
+        exploration_factor: float,
         num_runs: int,
         games: list[AgentGame],
     ) -> TestResult:
@@ -47,6 +49,7 @@ class TestResult:
             adversary_k=adversary_k,
             max_depth=max_depth,
             max_iter=max_iter,
+            exploration_factor=exploration_factor,
             num_runs=num_runs,
             avg_score=sum(scores) / len(scores),
             max_score=max(scores),
@@ -69,6 +72,7 @@ class TestResult:
         print(f"Adversary K: {self.adversary_k}")
         print(f"Max Depth: {self.max_depth}")
         print(f"Max Iterations: {self.max_iter}")
+        print(f"Exploration Factor: {self.exploration_factor}")
         print("---")
         print("Stats:")
         print(f"Runs: {self.num_runs}")
@@ -86,6 +90,7 @@ class TestHarness:
     adversary_k: int
     max_depth: int
     max_iter: int
+    exploration_factor: float
 
     @staticmethod
     def new(
@@ -95,6 +100,7 @@ class TestHarness:
         adversary_k: int,
         max_depth: int,
         max_iter: int,
+        exploration_factor: float,
     ) -> TestHarness:
         return TestHarness(
             num_runs=num_runs,
@@ -103,6 +109,7 @@ class TestHarness:
             adversary_k=adversary_k,
             max_depth=max_depth,
             max_iter=max_iter,
+            exploration_factor=exploration_factor,
         )
 
     def run(self) -> None:
@@ -115,6 +122,7 @@ class TestHarness:
                 Agent(
                     maxDepth=self.max_depth,
                     maxIter=self.max_iter,
+                    explorationFactor=self.exploration_factor,
                     name=f"Agent {i}",
                     mode=self.agent_mode,
                 ),
@@ -137,6 +145,7 @@ class TestHarness:
             self.adversary_k,
             self.max_depth,
             self.max_iter,
+            self.exploration_factor,
             self.num_runs,
             completed_games,
         )

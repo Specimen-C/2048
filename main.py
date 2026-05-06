@@ -1,3 +1,6 @@
+# module imports
+import math
+
 # item imports
 from argparse import ArgumentParser, Namespace
 
@@ -16,6 +19,7 @@ def run(args: Namespace) -> None:
     adversary_k: int = args.adversary_k
     max_depth: int = args.max_depth
     max_iter: int = args.max_iter
+    exploration_factor: float = args.exploration_factor
     agent_mode: AgentMode = AgentMode(args.agent_mode)
 
     # run args
@@ -35,6 +39,7 @@ def run(args: Namespace) -> None:
         adversary_k=adversary_k,
         max_depth=max_depth,
         max_iter=max_iter,
+        exploration_factor=exploration_factor,
         time_between_moves=time_between_moves,
     )
     app.run()
@@ -46,6 +51,7 @@ def test(args: Namespace) -> None:
     adversary_k: int = args.adversary_k
     max_depth: int = args.max_depth
     max_iter: int = args.max_iter
+    exploration_factor: float = args.exploration_factor
     agent_mode: AgentMode = AgentMode(args.agent_mode)
 
     # test args
@@ -59,6 +65,7 @@ def test(args: Namespace) -> None:
         adversary_k=adversary_k,
         max_depth=max_depth,
         max_iter=max_iter,
+        exploration_factor=exploration_factor,
     )
     harness.run()
 
@@ -101,6 +108,14 @@ if __name__ == "__main__":
         default=50,
         type=int,
         dest="max_iter",
+    )
+    parser.add_argument(
+        "-e",
+        "--exploration-factor",
+        help="exploration factor (default: sqrt(2))",
+        default=math.sqrt(2.0),
+        type=float,
+        dest="exploration_factor",
     )
     parser.add_argument(
         "-a",

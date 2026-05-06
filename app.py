@@ -283,6 +283,7 @@ class App:
         adversary_k: int,
         max_depth: int,
         max_iter: int,
+        exploration_factor: float,
         time_between_moves: float | None,
     ) -> App:
         # init pygame
@@ -306,6 +307,7 @@ class App:
             agent=Agent(
                 maxDepth=max_depth,
                 maxIter=max_iter,
+                explorationFactor=exploration_factor,
                 name="Agent",
                 mode=agent_mode,
             )

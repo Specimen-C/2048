@@ -20,6 +20,7 @@ class Agent:
     # values passed into post init
     maxDepth: InitVar[int]
     maxIter: InitVar[int]
+    explorationFactor: InitVar[float]
 
     # required values
     name: str
@@ -33,106 +34,22 @@ class Agent:
     tree: MCTree = field(init=False)
     death: datetime | None = field(init=False)
 
-    def __post_init__(self, maxDepth: int, maxIter: int) -> None:
+    def __post_init__(
+        self,
+        maxDepth: int,
+        maxIter: int,
+        explorationFactor: float,
+    ) -> None:
         self.death = None
         self.born = datetime.now()
         self.tree = MCTree(
             maxDepth=maxDepth,
             maxIter=maxIter,
+            explorationFactor=explorationFactor,
         )
 
-    def evaluate(self, gameState: GameState):
-        val = 0.0
-        board = gameState.board()
-        numTiles = 0
-        sizeTiles = 0
-        n = len(board)
-
-        # find the max tile in board
-        maxtile = Tile(0)
-        for r in range(n):
-            for c in range(n):
-                tile: Tile = board[r, c]
-                if tile > maxtile:
-                    maxtile = tile
-                if tile != 0:
-                    numTiles += 1
-                sizeTiles += 1
-
-        # Reward max tile in corner
-        if board[0, 0] == maxtile:
-            val += gameState.score() * 200
-        if board[0, n - 1] == maxtile:
-            val += gameState.score() * 200
-        if board[n - 1, 0] == maxtile:
-            val += gameState.score() * 200
-        if board[n - 1, n - 1] == maxtile:
-            val += gameState.score() * 200
-
-        # Reward monotonicity: tiles should decrease as you move away from max tile
-        # Check rows (left-to-right and right-to-left)
-        for r in range(n):
-            for c in range(n - 1):
-                left: Tile = board[r, c]
-                right: Tile = board[r, c + 1]
-                if left >= right:
-                    val += 1000
-                if right >= left:
-                    val += 1000
-
-        # Check columns (top-to-bottom and bottom-to-top)
-        for c in range(n):
-            for r in range(n - 1):
-                top: Tile = board[r, c]
-                bottom: Tile = board[r + 1, c]
-                if top >= bottom:
-                    val += 1000
-                if bottom >= top:
-                    val += 1000
-
-        # Penalize trapped tiles (tiles not adjacent to similar values)
-        for r in range(n):
-            for c in range(n):
-                tile = board[r, c]
-                if tile == 0:
-                    continue
-
-                # Check if this tile has any mergeable neighbors
-                hasMatchingNeighbor = False
-                neighbors: list[Tile] = []
-
-                # Check all 4 directions
-                if r > 0:  # Up
-                    neighbors.append(board[r - 1, c])
-                if r < n - 1:  # Down
-                    neighbors.append(board[r + 1, c])
-                if c > 0:  # Left
-                    neighbors.append(board[r, c - 1])
-                if c < n - 1:  # Right
-                    neighbors.append(board[r, c + 1])
-
-                # Check if any neighbor is same value (can merge) or empty (can move)
-                for neighbor in neighbors:
-                    if neighbor == 0:  # Empty space means not trapped
-                        hasMatchingNeighbor = True
-                        break
-                    if neighbor == tile:  # Can merge
-                        hasMatchingNeighbor = True
-                        break
-
-                # Penalize trapped tiles (bigger tiles get bigger penalties)
-                if not hasMatchingNeighbor:
-                    val -= tile * 0.5  # Scale penalty with tile value
-
-        # Incentivize empty tiles (more empty = better)
-        emptyTiles = sizeTiles - numTiles
-        val += emptyTiles * gameState.score() * 100000
-
-        # Penalty for full board
-        if numTiles == sizeTiles:
-            val -= 200
-
-        return val + gameState.score()
+    def evaluate(self, gameState: GameState) -> float:
+        return evaluate_02(self, gameState)
 
     def getAction(self, state: GameState, adversary: Adversary) -> Action:
         """
@@ -178,8 +95,8 @@ class MCTree:
         Perform simulations and pick a next action given the current state.
         """
 
-        self.qTable = {}
-        self.nTable = {}
+        # self.qTable = {}
+        # self.nTable = {}
 
         # simulate forward a configured number of times
         for _ in range(self.maxIter):
@@ -274,8 +191,114 @@ class MCTree:
         depth = self.maxDepth
         mutstate = MutableGameState.from_state(state)
         while depth > 0 and not mutstate.is_loss():
-            action = random.choice(list(mutstate.legal_actions()))
-            mutstate.mut_take_turn(action, adversary)
+            bestAction = max(
+                mutstate.legal_actions(),
+                key=lambda a: agent.evaluate(
+                    GameState.take_turn(mutstate, a, adversary)
+                ),
+            )
+            mutstate.mut_take_turn(bestAction, adversary)
             depth -= 1
 
         return agent.evaluate(mutstate)
+
+
+def evaluate_01(_: Agent, state: GameState) -> float:
+    val = 0.0
+    board = state.board()
+    numTiles = 0
+    sizeTiles = 0
+    n = len(board)
+
+    # find the max tile in board
+    maxtile = Tile(0)
+    for r in range(n):
+        for c in range(n):
+            tile: Tile = board[r, c]
+            if tile > maxtile:
+                maxtile = tile
+            if tile != 0:
+                numTiles += 1
+            sizeTiles += 1
+
+    # Reward max tile in corner
+    if board[0, 0] == maxtile:
+        val += state.score() * 200
+    if board[0, n - 1] == maxtile:
+        val += state.score() * 200
+    if board[n - 1, 0] == maxtile:
+        val += state.score() * 200
+    if board[n - 1, n - 1] == maxtile:
+        val += state.score() * 200
+
+    # Reward monotonicity: tiles should decrease as you move away from max tile
+    # Check rows (left-to-right and right-to-left)
+    for r in range(n):
+        for c in range(n - 1):
+            left: Tile = board[r, c]
+            right: Tile = board[r, c + 1]
+            if left >= right:
+                val += 1000
+            if right >= left:
+                val += 1000
+
+    # Check columns (top-to-bottom and bottom-to-top)
+    for c in range(n):
+        for r in range(n - 1):
+            top: Tile = board[r, c]
+            bottom: Tile = board[r + 1, c]
+            if top >= bottom:
+                val += 1000
+            if bottom >= top:
+                val += 1000
+
+    # Penalize trapped tiles (tiles not adjacent to similar values)
+    for r in range(n):
+        for c in range(n):
+            tile = board[r, c]
+            if tile == 0:
+                continue
+
+            # Check if this tile has any mergeable neighbors
+            hasMatchingNeighbor = False
+            neighbors: list[Tile] = []
+
+            # Check all 4 directions
+            if r > 0:  # Up
+                neighbors.append(board[r - 1, c])
+            if r < n - 1:  # Down
+                neighbors.append(board[r + 1, c])
+            if c > 0:  # Left
+                neighbors.append(board[r, c - 1])
+            if c < n - 1:  # Right
+                neighbors.append(board[r, c + 1])
+
+            # Check if any neighbor is same value (can merge) or empty (can move)
+            for neighbor in neighbors:
+                if neighbor == 0:  # Empty space means not trapped
+                    hasMatchingNeighbor = True
+                    break
+                if neighbor == tile:  # Can merge
+                    hasMatchingNeighbor = True
+                    break
+
+            # Penalize trapped tiles (bigger tiles get bigger penalties)
+            if not hasMatchingNeighbor:
+                val -= tile * 0.5  # Scale penalty with tile value
+
+    # Incentivize empty tiles (more empty = better)
+    emptyTiles = sizeTiles - numTiles
+    val += emptyTiles * state.score() * 100000
+
+    # Penalty for full board
+    if numTiles == sizeTiles:
+        val -= 200
+
+    return val + state.score()
+
+
+def evaluate_02(_: Agent, state: GameState) -> float:
+    if state.is_loss():
+        return -100_000_000 + (1 / state.score())
+    else:
+        return state.score()
