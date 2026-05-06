@@ -2,6 +2,7 @@
 from argparse import ArgumentParser, Namespace
 
 # local item imports
+from agent import AgentMode
 from app import App
 from test import TestHarness
 
@@ -15,6 +16,7 @@ def run(args: Namespace) -> None:
     adversary_k: int = args.adversary_k
     max_depth: int = args.max_depth
     max_iter: int = args.max_iter
+    agent_mode: AgentMode = AgentMode(args.agent_mode)
 
     # run args
     no_graphics: bool = args.no_graphics
@@ -29,6 +31,7 @@ def run(args: Namespace) -> None:
     app = App.new(
         board_size=board_size,
         player=player,
+        agent_mode=agent_mode,
         adversary_k=adversary_k,
         max_depth=max_depth,
         max_iter=max_iter,
@@ -43,6 +46,7 @@ def test(args: Namespace) -> None:
     adversary_k: int = args.adversary_k
     max_depth: int = args.max_depth
     max_iter: int = args.max_iter
+    agent_mode: AgentMode = AgentMode(args.agent_mode)
 
     # test args
     num_runs: int = args.num_runs
@@ -51,6 +55,7 @@ def test(args: Namespace) -> None:
     harness = TestHarness.new(
         num_runs=num_runs,
         board_size=board_size,
+        agent_mode=agent_mode,
         adversary_k=adversary_k,
         max_depth=max_depth,
         max_iter=max_iter,
@@ -96,6 +101,14 @@ if __name__ == "__main__":
         default=50,
         type=int,
         dest="max_iter",
+    )
+    parser.add_argument(
+        "-a",
+        "--agent-mode",
+        help="the mode for the agent to run in (default: mc)",
+        default="mc",
+        choices=["mc", "random"],
+        dest="agent_mode",
     )
     subparsers = parser.add_subparsers(
         required=True,

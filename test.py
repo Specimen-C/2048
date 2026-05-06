@@ -7,15 +7,16 @@ from datetime import datetime
 from pathlib import Path
 
 # local item imports
+from agent import Agent, AgentMode
 from game import AgentGame
 from gameState import Adversary
-from agent import Agent
 
 
 @dataclass
 class TestResult:
     # stats
     board_size: int
+    agent_mode: str
     adversary_k: int
     max_depth: int
     max_iter: int
@@ -31,6 +32,7 @@ class TestResult:
     @staticmethod
     def new(
         board_size: int,
+        agent_mode: AgentMode,
         adversary_k: int,
         max_depth: int,
         max_iter: int,
@@ -41,6 +43,7 @@ class TestResult:
         max_tiles: list[int] = [game.highest_tile for game in games]
         return TestResult(
             board_size=board_size,
+            agent_mode=agent_mode.value,
             adversary_k=adversary_k,
             max_depth=max_depth,
             max_iter=max_iter,
@@ -52,15 +55,17 @@ class TestResult:
             game_scores=scores,
         )
 
-    def save(self) -> None:
+    def save(self) -> Path:
         testfile = Path(f"tests/{datetime.now().strftime('%Y-%m-%dT%H%M%S')}.json")
         testfile.parent.mkdir(parents=True, exist_ok=True)
         with open(testfile, "x") as file:
             json.dump(asdict(self), file)
+        return testfile
 
     def print(self) -> None:
         print("Options:")
         print(f"Board Size: {self.board_size}")
+        print(f"Agent Mode: {self.agent_mode}")
         print(f"Adversary K: {self.adversary_k}")
         print(f"Max Depth: {self.max_depth}")
         print(f"Max Iterations: {self.max_iter}")
@@ -77,6 +82,7 @@ class TestResult:
 class TestHarness:
     num_runs: int
     board_size: int
+    agent_mode: AgentMode
     adversary_k: int
     max_depth: int
     max_iter: int
@@ -85,6 +91,7 @@ class TestHarness:
     def new(
         num_runs: int,
         board_size: int,
+        agent_mode: AgentMode,
         adversary_k: int,
         max_depth: int,
         max_iter: int,
@@ -92,6 +99,7 @@ class TestHarness:
         return TestHarness(
             num_runs=num_runs,
             board_size=board_size,
+            agent_mode=agent_mode,
             adversary_k=adversary_k,
             max_depth=max_depth,
             max_iter=max_iter,
@@ -108,6 +116,7 @@ class TestHarness:
                     maxDepth=self.max_depth,
                     maxIter=self.max_iter,
                     name=f"Agent {i}",
+                    mode=self.agent_mode,
                 ),
                 Adversary(self.adversary_k),
             )
@@ -124,11 +133,15 @@ class TestHarness:
         # compute and print final outputs
         res = TestResult.new(
             self.board_size,
+            self.agent_mode,
             self.adversary_k,
             self.max_depth,
             self.max_iter,
             self.num_runs,
             completed_games,
         )
+        print("---")
         res.print()
-        res.save()
+        testfile = res.save()
+        print("---")
+        print(f"Results saved to {testfile}")

@@ -6,13 +6,13 @@ import random
 from action import Action
 from dataclasses import InitVar, dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum, auto
+from enum import Enum
 from gameState import GameState, Adversary
 
 
 class AgentMode(Enum):
-    RANDOM = auto()
-    MONTE_CARLO = auto()
+    RANDOM = "random"
+    MONTE_CARLO = "mc"
 
 
 @dataclass(kw_only=True)
@@ -177,7 +177,7 @@ class MCTree:
         """
         Perform simulations and pick a next action given the current state.
         """
-        
+
         self.qTable = {}
         self.nTable = {}
 

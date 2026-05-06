@@ -5,12 +5,12 @@ import pygame
 from dataclasses import dataclass
 from pygame import Clock, Font, Surface
 
-# local imports
+# local item imports
 from action import Action
+from agent import Agent, AgentMode
 from game import AgentGame, PlayerGame
 from gameState import Adversary
 from tile import Tile
-from agent import Agent
 
 # types
 type ColorTuple = tuple[int, int, int]
@@ -289,6 +289,7 @@ class App:
     def new(
         board_size: int,
         player: bool,
+        agent_mode: AgentMode,
         adversary_k: int,
         max_depth: int,
         max_iter: int,
@@ -312,7 +313,12 @@ class App:
         # init state
         state = AppState.new(
             cfg=cfg,
-            agent=Agent(maxDepth=max_depth, maxIter=max_iter, name="Agent")
+            agent=Agent(
+                maxDepth=max_depth,
+                maxIter=max_iter,
+                name="Agent",
+                mode=agent_mode,
+            )
             if not player
             else None,
             adversary=Adversary(adversary_k),
