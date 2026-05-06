@@ -9,8 +9,7 @@ from pygame import Clock, Font, Surface
 from action import Action
 from agent import Agent, AgentMode
 from game import AgentGame, PlayerGame
-from gameState import Adversary
-from tile import Tile
+from gameState import Adversary, Tile
 
 # types
 type ColorTuple = tuple[int, int, int]
@@ -37,19 +36,15 @@ KEYBINDS: dict[int, Action] = {
 sampled_games = 5  # How many games to sample from
 
 
-def get_tile_colors(tile: Tile | None) -> tuple[ColorTuple, ColorTuple]:
+def get_tile_colors(tile: Tile) -> tuple[ColorTuple, ColorTuple]:
     """
     Given a tile, return the background and foreground color.
     """
 
-    # no tile
-    if tile is None:
-        return ((204, 193, 180), (204, 193, 180))
-
     # tile with value
-    match tile.value:
-        case -1:
-            return ((120, 12, 12), COLOR_FG_LIGHT)
+    match tile:
+        case 0:
+            return ((204, 193, 180), (204, 193, 180))
         case 2:
             return ((239, 229, 218), COLOR_FG_DARK)
         case 4:
@@ -175,7 +170,7 @@ class AppContext:
     should be initialized once and should not change.
     """
 
-    block_text: dict[int, Surface]
+    block_text: dict[Tile, Surface]
     """
     Collection of rendered text surfaces associated with a given block value.
     This text is pre-rendered for preformance reasons.
@@ -189,17 +184,12 @@ class AppContext:
     @staticmethod
     def new(block_text_font: Font, score_font: Font) -> AppContext:
         # generate block text
-        block_text: dict[int, Surface] = {}
+        block_text: dict[Tile, Surface] = {}
 
-        # Add special rendered block for bomb tiles
-        block_text[-1] = block_text_font.render(
-            "B", True, get_tile_colors(Tile.newWithoutLocation(-1))[1]
-        )
-
-        i = 2
+        i = Tile(2)
         while i <= 8192:
             block_text[i] = block_text_font.render(
-                str(i), True, get_tile_colors(Tile.newWithoutLocation(i))[1]
+                str(i), True, get_tile_colors(Tile(i))[1]
             )
             i *= 2
 
@@ -321,7 +311,7 @@ class App:
             )
             if not player
             else None,
-            adversary=Adversary(adversary_k),
+            adversary=Adversary.new(adversary_k, domain={Tile(2), Tile(4)}),
         )
 
         # window's surface
@@ -434,7 +424,7 @@ class App:
             for col_i in range(self.state.game.n):
                 self._draw_block(
                     inner_board,
-                    self.state.game.board[row_i][col_i],
+                    self.state.game.board[row_i, col_i],
                     row_i,
                     col_i,
                 )
@@ -455,7 +445,7 @@ class App:
     def _draw_block(
         self,
         board: Surface,
-        tile: Tile | None,
+        tile: Tile,
         row: int,
         col: int,
     ) -> None:
@@ -478,10 +468,8 @@ class App:
         cell.blit(block, (self.cfg.CELL_PADDING, self.cfg.CELL_PADDING))
 
         # draw text onto cell
-        if tile is not None:
-            text = self.ctx.block_text.get(
-                tile.value, self.ctx.block_text.get(tile.value)
-            )
+        if tile != 0:
+            text = self.ctx.block_text.get(tile, self.ctx.block_text.get(tile))
             if text is not None:
                 text_rect = text.get_rect(
                     center=(self.cfg.CELL_L / 2, self.cfg.CELL_L / 2)

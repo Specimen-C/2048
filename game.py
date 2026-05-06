@@ -1,3 +1,6 @@
+# module imports
+import numpy as np
+
 # item imports
 from abc import ABC
 from dataclasses import dataclass
@@ -5,8 +8,7 @@ from dataclasses import dataclass
 # local item imports
 from action import Action
 from agent import Agent
-from gameState import GameState, Adversary
-from tile import Tile
+from gameState import Adversary, GameState, Tile
 
 
 @dataclass(kw_only=True)
@@ -16,22 +18,22 @@ class Game(ABC):
 
     @property
     def score(self) -> int:
-        return self.state.score
+        return self.state.score()
 
     @property
     def n(self) -> int:
-        return self.state.n
+        return self.state.n()
 
     @property
-    def board(self) -> list[list[Tile | None]]:
-        return self.state.board
+    def board(self) -> np.ndarray[tuple[int, int], np.dtype[Tile]]:
+        return self.state.board()
 
     @property
-    def highest_tile(self) -> int:
-        return max([tile.value for list in self.state.board for tile in list if tile])
+    def highest_tile(self) -> Tile:
+        return max([tile for list in self.state.board() for tile in list if tile])
 
     def isLoss(self) -> bool:
-        return self.state.isLoss()
+        return self.state.is_loss()
 
 
 @dataclass(kw_only=True)
@@ -43,7 +45,7 @@ class AgentGame(Game):
         return AgentGame(
             agent=agent,
             adversary=adversary,
-            state=GameState.startState(n, adversary),
+            state=GameState.new(n, adversary),
         )
 
     def advance(self) -> None:
@@ -51,7 +53,7 @@ class AgentGame(Game):
         Make the agent choose and execute a next action.
         """
         action = self.agent.getAction(self.state, self.adversary)
-        self.state = self.state.takeTurn(action, self.adversary)
+        self.state = self.state.take_turn(action, self.adversary)
 
 
 @dataclass(kw_only=True)
@@ -63,11 +65,11 @@ class PlayerGame(Game):
     def new(n: int, adversary: Adversary) -> PlayerGame:
         return PlayerGame(
             adversary=adversary,
-            state=GameState.startState(n, adversary),
+            state=GameState.new(n, adversary),
         )
 
     def move(self, action: Action) -> None:
         """
         Take the given action.
         """
-        self.state = self.state.takeTurn(action, self.adversary)
+        self.state = self.state.take_turn(action, self.adversary)

@@ -9,7 +9,7 @@ from pathlib import Path
 # local item imports
 from agent import Agent, AgentMode
 from game import AgentGame
-from gameState import Adversary
+from gameState import Adversary, Tile
 
 
 @dataclass
@@ -40,7 +40,7 @@ class TestResult:
         games: list[AgentGame],
     ) -> TestResult:
         scores: list[int] = [game.score for game in games]
-        max_tiles: list[int] = [game.highest_tile for game in games]
+        max_tiles: list[int] = [int(game.highest_tile) for game in games]
         return TestResult(
             board_size=board_size,
             agent_mode=agent_mode.value,
@@ -118,7 +118,7 @@ class TestHarness:
                     name=f"Agent {i}",
                     mode=self.agent_mode,
                 ),
-                Adversary(self.adversary_k),
+                Adversary.new(self.adversary_k, domain={Tile(2), Tile(4)}),
             )
 
             # run game

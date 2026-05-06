@@ -7,7 +7,7 @@ from action import Action
 from dataclasses import InitVar, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from gameState import GameState, Adversary
+from gameState import Adversary, GameState, MutableGameState, Tile
 
 
 class AgentMode(Enum):
@@ -42,39 +42,39 @@ class Agent:
         )
 
     def evaluate(self, gameState: GameState):
-        val = 0
-        board = gameState.board
+        val = 0.0
+        board = gameState.board()
         numTiles = 0
         sizeTiles = 0
         n = len(board)
 
         # find the max tile in board
-        maxtile = 0
+        maxtile = Tile(0)
         for r in range(n):
             for c in range(n):
-                tile = board[r][c]
-                if tile != None and tile.value > maxtile:
-                    maxtile = tile.value
-                if tile != None:
+                tile: Tile = board[r, c]
+                if tile > maxtile:
+                    maxtile = tile
+                if tile != 0:
                     numTiles += 1
                 sizeTiles += 1
 
         # Reward max tile in corner
-        if board[0][0] != None and board[0][0].value == maxtile:
-            val += gameState.score * 200
-        if board[0][n - 1] != None and board[0][n - 1].value == maxtile:
-            val += gameState.score * 200
-        if board[n - 1][0] != None and board[n - 1][0].value == maxtile:
-            val += gameState.score * 200
-        if board[n - 1][n - 1] != None and board[n - 1][n - 1].value == maxtile:
-            val += gameState.score * 200
+        if board[0, 0] == maxtile:
+            val += gameState.score() * 200
+        if board[0, n - 1] == maxtile:
+            val += gameState.score() * 200
+        if board[n - 1, 0] == maxtile:
+            val += gameState.score() * 200
+        if board[n - 1, n - 1] == maxtile:
+            val += gameState.score() * 200
 
         # Reward monotonicity: tiles should decrease as you move away from max tile
         # Check rows (left-to-right and right-to-left)
         for r in range(n):
             for c in range(n - 1):
-                left = board[r][c].value if board[r][c] != None else 0
-                right = board[r][c + 1].value if board[r][c + 1] != None else 0
+                left: Tile = board[r, c]
+                right: Tile = board[r, c + 1]
                 if left >= right:
                     val += 1000
                 if right >= left:
@@ -83,8 +83,8 @@ class Agent:
         # Check columns (top-to-bottom and bottom-to-top)
         for c in range(n):
             for r in range(n - 1):
-                top = board[r][c].value if board[r][c] != None else 0
-                bottom = board[r + 1][c].value if board[r + 1][c] != None else 0
+                top: Tile = board[r, c]
+                bottom: Tile = board[r + 1, c]
                 if top >= bottom:
                     val += 1000
                 if bottom >= top:
@@ -93,46 +93,46 @@ class Agent:
         # Penalize trapped tiles (tiles not adjacent to similar values)
         for r in range(n):
             for c in range(n):
-                tile = board[r][c]
-                if tile == None:
+                tile = board[r, c]
+                if tile == 0:
                     continue
 
                 # Check if this tile has any mergeable neighbors
                 hasMatchingNeighbor = False
-                neighbors = []
+                neighbors: list[Tile] = []
 
                 # Check all 4 directions
                 if r > 0:  # Up
-                    neighbors.append(board[r - 1][c])
+                    neighbors.append(board[r - 1, c])
                 if r < n - 1:  # Down
-                    neighbors.append(board[r + 1][c])
+                    neighbors.append(board[r + 1, c])
                 if c > 0:  # Left
-                    neighbors.append(board[r][c - 1])
+                    neighbors.append(board[r, c - 1])
                 if c < n - 1:  # Right
-                    neighbors.append(board[r][c + 1])
+                    neighbors.append(board[r, c + 1])
 
                 # Check if any neighbor is same value (can merge) or empty (can move)
                 for neighbor in neighbors:
-                    if neighbor == None:  # Empty space means not trapped
+                    if neighbor == 0:  # Empty space means not trapped
                         hasMatchingNeighbor = True
                         break
-                    if neighbor.value == tile.value:  # Can merge
+                    if neighbor == tile:  # Can merge
                         hasMatchingNeighbor = True
                         break
 
                 # Penalize trapped tiles (bigger tiles get bigger penalties)
                 if not hasMatchingNeighbor:
-                    val -= tile.value * 0.5  # Scale penalty with tile value
+                    val -= tile * 0.5  # Scale penalty with tile value
 
         # Incentivize empty tiles (more empty = better)
         emptyTiles = sizeTiles - numTiles
-        val += emptyTiles * gameState.score * 100000
+        val += emptyTiles * gameState.score() * 100000
 
         # Penalty for full board
         if numTiles == sizeTiles:
             val -= 200
 
-        return val + gameState.score
+        return val + gameState.score()
 
     def getAction(self, state: GameState, adversary: Adversary) -> Action:
         """
@@ -140,13 +140,13 @@ class Agent:
         """
 
         # legal actions
-        legalActions = state.getLegalActions()
+        legalActions = state.legal_actions()
         if not legalActions:
             raise Exception("No legal actions available")
 
         match self.mode:
             case AgentMode.RANDOM:
-                return random.choice(state.getLegalActions())
+                return random.choice(list(legalActions))
             case AgentMode.MONTE_CARLO:
                 return self.tree.search(state, self, adversary)
 
@@ -188,7 +188,7 @@ class MCTree:
         # pick argmax from q table
         maxQ = float("-inf")
         maxAction: Action | None = None
-        for action in state.getLegalActions():
+        for action in state.legal_actions():
             curQ = self.qTable.get((state, action), float("-inf"))
             if curQ >= maxQ:
                 maxQ = curQ
@@ -212,8 +212,8 @@ class MCTree:
 
         # simulate forward until a leaf node
         while action is not None and (state, action) in self.qTable:
-            state = state.takeTurn(action, adversary)
-            if len(state.getLegalActions()) != 0:
+            state = state.take_turn(action, adversary)
+            if len(state.legal_actions()) != 0:
                 action = self.selectActionUCB(state)
             else:
                 action = None
@@ -235,7 +235,7 @@ class MCTree:
         """
 
         # all legal actions
-        legalActions = state.getLegalActions()
+        legalActions = list(state.legal_actions())
         if not legalActions:
             raise Exception("No legal actions avalible")
 
@@ -272,9 +272,10 @@ class MCTree:
         """
 
         depth = self.maxDepth
-        while depth > 0 and not state.isLoss():
-            action = random.choice(state.getLegalActions())
-            state = state.takeTurn(action, adversary)
+        mutstate = MutableGameState.from_state(state)
+        while depth > 0 and not mutstate.is_loss():
+            action = random.choice(list(mutstate.legal_actions()))
+            mutstate.mut_take_turn(action, adversary)
             depth -= 1
 
-        return agent.evaluate(state)
+        return agent.evaluate(mutstate)
