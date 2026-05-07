@@ -3,7 +3,7 @@ import json
 
 # item imports
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # local item imports
@@ -26,6 +26,7 @@ class TestResult:
     max_score: int
     min_score: int
     max_tile: int
+    runtime: float
 
     # games
     game_scores: list[int]
@@ -39,6 +40,7 @@ class TestResult:
         max_iter: int,
         exploration_factor: float,
         num_runs: int,
+        runtime: float,
         games: list[AgentGame],
     ) -> TestResult:
         scores: list[int] = [game.score for game in games]
@@ -55,6 +57,7 @@ class TestResult:
             max_score=max(scores),
             min_score=min(scores),
             max_tile=max(max_tiles),
+            runtime=runtime,
             game_scores=scores,
         )
 
@@ -72,10 +75,13 @@ class TestResult:
         print(f"Adversary K: {self.adversary_k}")
         print(f"Max Depth: {self.max_depth}")
         print(f"Max Iterations: {self.max_iter}")
-        print(f"Exploration Factor: {self.exploration_factor}")
+        print(f"Exploration Factor: {self.exploration_factor:.2f}")
         print("---")
         print("Stats:")
         print(f"Runs: {self.num_runs}")
+        print(
+            f"Runtime: {(self.runtime):.2f} s ({(self.runtime / self.num_runs):.2f} s avg)"
+        )
         print(f"Avg Score: {self.avg_score}")
         print(f"Max Score: {self.max_score}")
         print(f"Min Score: {self.min_score}")
@@ -123,7 +129,7 @@ class TestHarness:
                     maxDepth=self.max_depth,
                     maxIter=self.max_iter,
                     explorationFactor=self.exploration_factor,
-                    name=f"Agent {i}",
+                    name=f"Agent {i + 1}",
                     mode=self.agent_mode,
                 ),
                 Adversary.new(self.adversary_k, domain={Tile(2), Tile(4)}),
@@ -134,11 +140,19 @@ class TestHarness:
                 print(f"Game {i}: {game.score}".ljust(40), end="\r", flush=True)
                 game.advance()
 
+            # kill agent
+            game.agent.death = datetime.now()
+
             # print final and push
-            print(f"Game {i}: {game.score} (complete)".ljust(40))
+            print(f"Game {i + 1}: {game.score} (complete)".ljust(40))
             completed_games.append(game)
 
-        # compute and print final outputs
+        # compute and print
+        total_time = timedelta()
+        for game in completed_games:
+            if game.agent.lifespan:
+                total_time += game.agent.lifespan
+
         res = TestResult.new(
             self.board_size,
             self.agent_mode,
@@ -147,8 +161,11 @@ class TestHarness:
             self.max_iter,
             self.exploration_factor,
             self.num_runs,
+            total_time.total_seconds(),
             completed_games,
         )
+
+        # print outputs
         print("---")
         res.print()
         testfile = res.save()
