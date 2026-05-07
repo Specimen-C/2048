@@ -1,0 +1,1 @@
+{"board_size": 4, "agent_mode": "mc", "adversary_k": 10, "max_depth": 1, "max_iter": 400, "exploration_factor": 0.2, "num_runs": 10, "avg_score": 9584.0, "max_score": 15108, "min_score": 4992, "max_tile": 1024, "runtime": 575.091946, "game_scores": [6648, 15108, 11124, 11520, 4992, 13512, 5980, 13732, 6744, 6480]}
