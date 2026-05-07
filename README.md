@@ -1,4 +1,8 @@
-## Scope increase ideas
+# 4th Floor's 2048 Bot
+
+Looking for the report? Go to [report.md](./report.md).
+
+## Scope Increase Ideas
 
 - Larger board
 - Additional mechanics (Random tile swaps/Tile value changes)
@@ -8,26 +12,6 @@
 - Bomb tiles (Merging tiles deletes them, but also lowers score)
 - Beer tiles (Merging a beer tile makes your next move have a probability of
   going in a different direction)
-
-## Project Structure
-
-- `action.py`
-  - `Action`: enum of possible actions
-- `agent.py`
-  - `Agent`: 2048-playing agent
-  - `AgentMode`: enum of modes (policies) for the agent
-- `app.py`
-  - `App`: class containing the ui app logic
-- `game.py`
-  - `AgentGame`: 2048 played by an agent
-  - `PlayerGame`: 2048 played by a user
-- `gameState.py`
-  - `Adversary`: adversary which places new tiles on the board
-  - `GameState`: representation of the game board
-- `main.py`: entry into the program
-- `test.py`
-  - `TestHarness`: class supporting running tests
-
 
 ## Running the Program
 
@@ -48,7 +32,28 @@ uv run main.py run --help
 uv run main.py test --help
 ```
 
-## TODO 4/9 Meeting
+## Project Structure
+
+- `action.py`
+  - `Action`: enum of possible actions
+- `agent.py`
+  - `Agent`: 2048-playing agent
+  - `AgentMode`: enum of modes (policies) for the agent
+- `app.py`
+  - `App`: class containing the ui app logic
+- `game.py`
+  - `AgentGame`: 2048 played by an agent
+  - `PlayerGame`: 2048 played by a user
+- `gameState.py`
+  - `Adversary`: adversary which places new tiles on the board
+  - `GameState`: representation of the game board
+- `main.py`: entry into the program
+- `test.py`
+  - `TestHarness`: class supporting running tests
+
+## Meeting Notes
+
+### TODO 4/9 Meeting
 
 - Update and integrate `gameState.py` = (Max, Mack)
   - Create bomb tiles
@@ -59,7 +64,7 @@ uv run main.py test --help
 - Agent class (can be random for now) = (Han)
   - Evaluation function for gameState
 
-## TODO 4/30 Meeting
+### TODO 4/30 Meeting
 
 - Create a MCT class so it is persistent (Mack)
 - Update bomb tiles so they're usable (Max)
