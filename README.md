@@ -27,8 +27,6 @@
 - `main.py`: entry into the program
 - `test.py`
   - `TestHarness`: class supporting running tests
-- `tile.py`
-  - `Tile`: class representing a tile on the board
 
 
 ## Running the Program
@@ -42,22 +40,12 @@ command:
 uv run main.py run -p
 ```
 
-A number of options can be added to customize the game, agent, and adversary. for example:
-
-```
-uv run main.py -n 4 -k 5 -d 10 -i 50 run
-```
-
-Use the `--help` option for more info.
+A number of options can be added to customize the game, agent, and adversary. Use the `--help` option for more info.
 
 ```
 uv run main.py --help
-```
-
-The testing harness can run multiple games in sequence and report stats:
-
-```
-uv run main.py -n 4 -k 5 -d 10 -i 50 test -r 5
+uv run main.py run --help
+uv run main.py test --help
 ```
 
 ## TODO 4/9 Meeting
