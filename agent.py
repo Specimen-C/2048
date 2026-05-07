@@ -95,8 +95,8 @@ class MCTree:
         Perform simulations and pick a next action given the current state.
         """
 
-        # self.qTable = {}
-        # self.nTable = {}
+        self.qTable = {}
+        self.nTable = {}
 
         # simulate forward a configured number of times
         for _ in range(self.maxIter):
@@ -190,17 +190,42 @@ class MCTree:
 
         depth = self.maxDepth
         mutstate = MutableGameState.from_state(state)
+        prevAction: Action | None = None
         while depth > 0 and not mutstate.is_loss():
-            bestAction = max(
-                mutstate.legal_actions(),
-                key=lambda a: agent.evaluate(
-                    GameState.take_turn(mutstate, a, adversary)
-                ),
-            )
-            mutstate.mut_take_turn(bestAction, adversary)
+            action = rollout_action_02(mutstate, agent, adversary, prevAction)
+            mutstate.mut_take_turn(action, adversary)
             depth -= 1
 
         return agent.evaluate(mutstate)
+
+
+def rollout_action_01(
+    state: GameState,
+    agent: Agent,
+    adversary: Adversary,
+) -> Action:
+    return max(
+        state.legal_actions(),
+        key=lambda a: agent.evaluate(GameState.take_turn(state, a, adversary)),
+    )
+
+
+def rollout_action_02(
+    state: GameState,
+    agent: Agent,
+    adversary: Adversary,
+    prevAction: Action | None,
+) -> Action:
+    legalActions = state.legal_actions()
+    wantedAction = Action.LEFT if prevAction is Action.UP else Action.UP
+    if wantedAction in legalActions:
+        return wantedAction
+    else:
+        orderedActions = [Action.UP, Action.LEFT, Action.RIGHT, Action.DOWN]
+        for action in orderedActions:
+            if action in legalActions:
+                return action
+    raise Exception("No avlaibile actions")
 
 
 def evaluate_01(_: Agent, state: GameState) -> float:
@@ -299,6 +324,6 @@ def evaluate_01(_: Agent, state: GameState) -> float:
 
 def evaluate_02(_: Agent, state: GameState) -> float:
     if state.is_loss():
-        return -100_000_000 + (1 / state.score())
+        return -100_000_000 + (1 / math.log2(state.score()))
     else:
-        return state.score()
+        return math.log2(state.score() if state.score() > 0 else 1)
