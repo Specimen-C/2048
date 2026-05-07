@@ -1,7 +1,3 @@
-# module imports
-import math
-import matplotlib.pyplot as plt
-
 # local item import
 from agent import AgentMode
 from test import TestHarness

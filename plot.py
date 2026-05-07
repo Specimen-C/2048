@@ -1,7 +1,6 @@
 # module imports
 import json
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 # item imports
@@ -40,7 +39,7 @@ if __name__ == "__main__":
 
     # exploration factor, given d=5
     fig, ax = plt.subplots()
-    for i in [50, 100, 200, 400]:
+    for i in [50, 100, 200]:
         # filter df
         fdf = df[df["max_depth"] == 5]
         fdf = fdf[fdf["max_iter"] == i]
@@ -50,12 +49,14 @@ if __name__ == "__main__":
         y = fdf["avg_score"]
 
         # plot
-        ax.scatter(x, y, label=f"i={i}", alpha=0.8)
+        ax.scatter(x, y, label=f"i={i}", alpha=0.6)
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.title("Average Score given Exploration Factor (d=5)")
     plt.xlabel("Exploration Factor")
+    plt.xticks([0.2, 0.8, 1.4, 2.0])
     plt.ylabel("Average Score")
     plt.tight_layout()
+    plt.savefig("plots/explortion-factor.png")
     plt.show()
 
     # depth, given C=0.8
@@ -64,18 +65,21 @@ if __name__ == "__main__":
         # filter df
         fdf = df[df["max_iter"] == i]
         fdf = fdf[fdf["exploration_factor"] == 0.8]
+        fdf = fdf.groupby("max_depth", as_index=False)["avg_score"].mean()
 
         # get x and y
         x = fdf["max_depth"]
         y = fdf["avg_score"]
 
         # plot
-        ax.scatter(x, y, label=f"i={i}")
+        ax.scatter(x, y, label=f"i={i}", alpha=0.6)
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.title("Average Score given Depth (C=0.8)")
     plt.xlabel("Max Depth")
+    plt.xticks([1, 5, 10, 20, 50])
     plt.ylabel("Average Score")
     plt.tight_layout()
+    plt.savefig("plots/depth.png")
     plt.show()
 
     # iterations, given d=5
@@ -90,32 +94,35 @@ if __name__ == "__main__":
         y = fdf["avg_score"]
 
         # plot
-        plt.scatter(x, y, label=f"C={c}")
+        plt.scatter(x, y, label=f"C={c}", alpha=0.6)
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.title("Average Score given Iterations (d=5)")
     plt.xlabel("Max Iteration")
+    plt.xticks([50, 100, 200])
     plt.ylabel("Average Score")
     plt.tight_layout()
+    plt.savefig("plots/iterations.png")
     plt.show()
 
     # model scores vs random scores
     with open("tests/2026-05-07T091403.json") as f:
         random_data = json.load(f)
+    with open("tests/2026-05-07T093955.json") as f:
+        best_data = json.load(f)
 
     random_df = pd.DataFrame(random_data)
-    print(random_df)
-
-    fig, ax = plt.subplots()
-
-    # get x and y
-    x = random_df.index
-    y = random_df["game_scores"]
+    best_df = pd.DataFrame(best_data)
 
     # plot
-    plt.scatter(x, y, label="random")
+    fig, ax = plt.subplots()
+    plt.scatter(random_df.index, random_df["game_scores"], label="random", alpha=0.6)
+    plt.plot(random_df.index, random_df["avg_score"], linestyle=":")
+    plt.scatter(best_df.index, best_df["game_scores"], label="best", alpha=0.6)
+    plt.plot(best_df.index, best_df["avg_score"], linestyle=":")
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.title("Scores")
     plt.xlabel("Game")
     plt.ylabel("Score")
     plt.tight_layout()
+    plt.savefig("plots/best.png")
     plt.show()
