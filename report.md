@@ -170,8 +170,70 @@ on, multiple times.
 
 ## Implementation (Mack)
 
-...
+Our implementation of the state representation evolved greatly over the course
+of the project. We started by representing the board as a 2D array using the
+built-in `list` type. However, these states must be immutable to be used in our
+Monte Carlo Search Tree. As such, any mutations to the state require first
+duplicating the state in memory. This was an issue, as new states are created
+all the time (upwards of thousands of times per move), and we were running into
+performance bottlenecks. To fix this issue, we updated our gamestate to use
+Numpy's `ndarray` type. This made copies more efficient and greatly improved
+performance. We also made optimizations to reduce the number of copies made per
+turn.
+
+We encoded the Monte Carlo Search Tree as a set of Q and N tables, represented
+as `dicts` (hence why `GameState`s must be immutable). This "tree" is then used
+by the `Agent` to pick the most optimal next move.
+
+We also implemented a testing harness to collect data from a number of runs at
+once. This is what we used to collect the data discussed below.
 
 ## Results (Mack)
 
-...
+Tuning the model was one of the most difficult parts of this project. Changing
+parameters often led to unexpected drops in score or runtime performance (and
+often both).
+
+By making the game more complex and adding an adversary that places tiles
+maliciously, it is possible that we made the game a bit too hard. If we had more
+time, we would have also liked to tweak our state evalutaion function and
+rollout policy to optimize for score. All of these aspects have the potential
+for improvement in future iterations of this project.
+
+The data from a number of our tests can be found in the `data` directory in the
+repo. From this, we created a few visual representations. Behold the graphs
+below:
+
+![Exploration Factor Graph](./plots/exploration-factor.png)
+
+![Depth Graph](./plots/depth.png)
+
+![Iterations Graph](./plots/iterations.png)
+
+![Best Graph](./plots/best.png)
+
+_The "best" model was run with the parameters `max_depth` = 1 `max_iter` = 400,
+and `exploration_factor` = 1.4._
+
+For all graphs the following parameters are constant:
+
+- `num_runs` = 10
+- `board_size` = 4
+- `adversary_k` = 10
+- `agent_mode` = "mc"
+
+While the following vary:
+
+- `max_depth`
+- `max_iter`
+- `exploration_factor`
+
+The data produces more questions than answers. The most obvious is why does
+model performance seem to degrade as the depth is increased? This seems
+contradictory, as a higher depth should give the algorithm more information, yet
+it instead leads the agent to death more quickly. This may be related to how we
+simulate rollout or how we score future states.
+
+Overall, though, the model performs well. It consistently does better than just
+taking random moves, and continues to improve with small tweaks to the
+parameters.
