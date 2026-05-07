@@ -4,3 +4,4 @@ tests
 .ruff_cache
 .venv
 .vscode
+tmp.csv

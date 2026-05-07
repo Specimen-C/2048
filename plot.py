@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 # constants
-DATA_DIR = Path("tests")
+DATA_DIR = Path("data")
 
 # do script
 if __name__ == "__main__":
@@ -105,9 +105,9 @@ if __name__ == "__main__":
     plt.show()
 
     # model scores vs random scores
-    with open("tests/2026-05-07T091403.json") as f:
+    with open(DATA_DIR / "2026-05-07T091403.json") as f:
         random_data = json.load(f)
-    with open("tests/2026-05-07T093955.json") as f:
+    with open(DATA_DIR / "2026-05-07T093955.json") as f:
         best_data = json.load(f)
 
     random_df = pd.DataFrame(random_data)
